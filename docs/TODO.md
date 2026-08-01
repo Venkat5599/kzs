@@ -8,6 +8,15 @@ the reasoning, this one is the checklist.
 
 ---
 
+## Live right now
+
+| | |
+|---|---|
+| Demo | https://kairos-nox.vercel.app |
+| Mirror (VPS) | https://kairos.187.127.137.136.sslip.io |
+| Gateway API | https://kairos-api.187.127.137.136.sslip.io |
+| Vault (Sepolia) | `0x1b5919e3ec31daaa88a69ca4bf27aa83dbed57f8` |
+
 ## Done
 
 - [x] PRD, Architecture, Project structure, 6 ADRs
@@ -18,117 +27,61 @@ the reasoning, this one is the checklist.
 - [x] `packages/shared` — verdict rule, errors, branded types — 12 passing
 - [x] **Deployed to Sepolia**, addresses recorded in README
 - [x] README reframed around the confidentiality thesis
+- [x] Policy engine (cap · velocity · allowlist · composite) + ring registry
+- [x] Replay nullifier; 5 bugs fixed, 2 of them privacy bugs
+- [x] Whole chain proven live: settle, flush, real Uniswap V3 swap
+- [x] `packages/confidential` — Nox client, fail-closed verdict
+- [x] `apps/gateway` — live, serving decrypted vault state
+- [x] Dashboard wired to the gateway; zero console errors
+- [x] Deployed to Vercel and the VPS
+- [x] Dashboard copy rewritten for a non-technical reader
 
 ---
 
-## 1. ~~Prove the vault against live Nox~~ — DONE
+## What is left
 
-All checks passed against the deployed vault and the real TEE. Transaction
-hashes are in the README. Run it yourself: `bun run --cwd contracts prove:live`.
+Ordered by what a judge would notice.
 
-- [x] Full cycle: fund -> registerAgent -> settle under cap -> settle over cap
-- [x] Under-cap settle debits the agent and the treasury
-- [x] **Over-cap settle debits zero and does NOT revert** — the central claim
-- [x] Treasury unchanged by the over-cap call
-- [x] `Settled` events carry an empty body — no address, no amount
-- [x] Owner decrypts treasury and spend; a non-viewer gets `403 not a viewer`
+### 1. Demo video
+- [ ] Record: landing page → vault showing real decrypted balance → settle under
+      the limit → settle over it and show it refused → publish batch → the
+      Etherscan transaction where the over-limit settle *succeeded*
 
-Found and fixed a real bug doing this: `addViewer` reverts with
-`PublicHandleACLForbidden` on trivially-encrypted handles from `toEuint256`.
-Guarded with `isPubliclyDecryptable`. Vault redeployed.
-
-Still open on the contract:
-- [ ] Exercise `flushEpoch` + `proveEpochAggregate` live (needs 3 settlements in
-      one epoch; `flushThreshold` is 3)
-- [ ] Execute a real swap through `KairosSettlementRouter` on Sepolia — needs a
-      funded token pair. **This is the highest-value item left.**
-
-## 2. Reframe the frontend copy
-
-All landing copy lives in one file — `apps/frontend/lib/config.ts`.
-
-- [ ] Lead with the DeFi composability story, not agent safety
-- [ ] Add the live contract addresses with Etherscan links
-- [ ] Say plainly that Uniswap is used unmodified
-- [ ] Update `siteConfig.vault` / `vaultExplorer` to the new vault address
-- [ ] Keep the "what is hidden vs public" section — it is the strongest part
-
-## 3. `packages/confidential`
-
-Where fail-closed stops being a doc and becomes code.
-
-- [ ] Nox JS SDK client: `encryptInput`, `decrypt`, `viewACL`
-- [ ] `settle()` wrapper returning a `Verdict`, routed through `verdictFromDecryption`
-- [ ] Tests: authorized · refused · decrypt throws · returns null · times out
-- [ ] Every failure path must produce `unreadable`, never `refused`
-
-## 4. Remaining packages
-
-- [ ] `packages/chain` — RPC status, chainId, explorer links, single-source `demoMode`
-- [ ] `packages/authz` — scoped session keys; tests for expired, revoked, wrong scope
-- [ ] `packages/manifest` — parse + validate, typed rejection on malformed input
-- [ ] `packages/workflow` — graph engine on the single scheduling rule; publish-time
-      validation (cycles, dangling edges, duplicate ids, missing entry); bounded execution
-- [ ] `packages/sdk` — typed gateway client shared by frontend and MCP server
-
-## 5. `apps/gateway`
-
-- [ ] Schema-validated config; refuse to boot on invalid input
-- [ ] `/chain/status` reporting `demoMode` explicitly
-- [ ] x402: unpaid → `402` + quote; proof → execute; over-cap → `402`
-- [ ] **Fail-closed enforced here**, with a test that cannot be skipped
-- [ ] Egress restricted to each manifest's declared allowlist
-- [ ] Vault routes: fund, register, revoke, settle, epoch, flush
-- [ ] Structured logging with request ids — never a key, handle value, or decrypted amount
-
-## 6. `apps/mcp-server` and `services/*`
-
-- [ ] Skills exposed as MCP tools over stdio
-- [ ] `services/catalog` · `payments` · `identity` · `execution`
-
-## 7. Wire the dashboard
-
-- [ ] Point `apps/frontend/lib/api.ts` at the real gateway
-- [ ] Kill the 6 `ERR_CONNECTION_REFUSED` currently on `/dashboard`
-- [ ] Verify in a real browser: zero console errors, 1440px and 375px
-
-## 8. Deploy
-
-- [ ] Gateway to the VPS behind TLS — **needs host credentials**
-- [ ] Frontend to the VPS
-- [ ] Health checks; confirm the dashboard reads live chain state
-- [ ] CI green end to end
-
-## 9. Before submitting
-
-- [ ] Flip the README build-status table to what is actually true
+### 2. Polish
+- [ ] `bun run test` before submitting — 25 tests should still pass
+- [ ] Re-read the limitations sections; they must still be true
 - [ ] Verify contracts on Etherscan so the source is readable
-- [ ] Re-read the limitations sections — they must still be accurate
-- [ ] **Rotate the deployer key**
+- [ ] **Rotate the deployer key** — it is in a chat transcript
+
+### 3. Nice to have, not needed to submit
+- [ ] `packages/{chain,authz,manifest,workflow,sdk}`
+- [ ] `apps/mcp-server` — skills as MCP tools
+- [ ] `services/*` — the gateway catalogue is in-process and resets on restart
+- [ ] x402 402-quote path in the gateway
 
 ---
 
-## Blockers
+## Deploy
 
-| Blocker | Needed from |
-|---|---|
-| VPS host, user, auth method | You |
-| Etherscan API key (for source verification) | You — optional but worth it |
+Both procedures are in [`infra/DEPLOY.md`](../infra/DEPLOY.md).
 
-Sepolia deployer key: supplied, funded, **already used**. Rotate after the event —
-it exists in a chat transcript.
+- Vercel: `bun run deploy:vercel` — **not** `vercel --prod`, which leaves the
+  alias pointing at the previous build without saying so.
+- VPS: `ssh -i ~/.ssh/agent_fabric_vps root@187.127.137.136`. Build on the VPS,
+  never locally — a Windows build emits symlinks tar will not carry and a
+  win32 sharp binary Linux cannot load.
 
 ---
 
-## Notes for whoever picks this up
+## Traps worth knowing
 
 - `bun` only, never `npm`/`npx`.
-- Tests split: `bun run test:unit` (bun runner) and `bun run test:contracts` (hardhat).
-  Root `bun test` alone will try to run the hardhat suite under bun and fail.
-- `KairosVault` **cannot deploy on a bare local chain** — its constructor calls
-  NoxCompute, which only exists on Sepolia (11155111) and Arbitrum Sepolia (421614).
-  Vault tests need a fork or the live testnet. The router has no Nox dependency
-  and tests offline.
-- Nox exposes **no boolean operators on `ebool`**. Conjunctions are composed
-  arithmetically. Do not go looking for `Nox.and`.
-- `safeSub` / `safeAdd` return `(ebool, euint256)` — the flag is the point.
+- Tests split: `bun run test:unit` (bun) and `bun run test:contracts` (hardhat).
+- `KairosVault` cannot deploy on a bare local chain — its constructor calls
+  NoxCompute, which exists only on Sepolia and Arbitrum Sepolia.
+- Nox has **no boolean operators on `ebool`**. Conjunctions are arithmetic.
+- `safeSub`/`safeAdd` return `(ebool, euint256)` — the flag is the point.
+- A policy is a separate contract and holds no ACL grant on a handle. Grant it
+  transiently or every Nox op inside it reverts.
+- `addViewer` reverts on trivially-encrypted handles from `toEuint256`.
+- CORS: `origin: "*"` with `credentials: true` is invalid and fails every request.
