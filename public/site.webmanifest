@@ -1,0 +1,16 @@
+{
+  "name": "Kairos",
+  "short_name": "Kairos",
+  "description": "Give an AI agent a budget it cannot exceed, without publishing the budget. Caps and settlement amounts stay encrypted inside iExec Nox on Ethereum Sepolia.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#edf0ee",
+  "theme_color": "#0e1a20",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

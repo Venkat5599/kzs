@@ -1,0 +1,323 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * Kairos palette.
+ *
+ * Every value is pulled out of the fold artwork, so the page and the picture
+ * are one surface rather than a picture pasted onto a theme. The sea gives the
+ * ink and the recessed tones, the dawn gives the single accent, and the grout
+ * the tesserae are set into gives the dark sections.
+ *
+ * The accent is used tonally and sparingly. Saturation lives in the artwork;
+ * the interface around it stays quiet, because an accent sprayed onto every
+ * label, dot and button is what makes a page read as a template.
+ */
+:root {
+  /* Page. A pale wall with a green-blue cast lifted from the water — not
+     cream, and not the cool grey that ships as every UI kit's default. */
+  --surface: #edf0ee;
+  --surface-2: #e2e8e5;
+  --surface-3: #d6dedb;
+
+  /* Ink. A deep sea-black that belongs to the artwork, never a stock #111. */
+  --ink: #0c2128;
+  --ink-2: #3d5155;
+  --ink-3: #6b7c7d;
+
+  --amber: #b8722e;
+  --amber-deep: #8f5520;
+
+  /* The two sides of the artwork's own complementary pair, taken down to
+     interface strength. The sea drives the primary action, the horizon light
+     drives the secondary — so the button pair repeats the relationship the
+     picture is built on instead of falling back to black-on-grey. */
+  --teal: #0f4a52;
+  --teal-lift: #15616c;
+  --sand: #e5dccb;
+  --sand-lift: #dcd1bc;
+
+  /* The mortar the tesserae are set into. Dark sections use it so they read as
+     the same material as the fold. */
+  --grout: #0e1a20;
+  --grout-2: #16262d;
+
+  /* The picture's two zones, used where something is exposed versus sealed.
+     Daylight above the horizon, deep water below it — a real complementary
+     pair taken from the artwork, so neither panel falls back to the washed
+     UI-kit grey or to a generic near-black card. */
+  --daylight: #eae3d5;
+  --daylight-line: #d6ccb8;
+  --sea-deep: #0d3b44;
+
+  /* Legacy token names kept so the dashboard keeps compiling, re-pointed off
+     the old lime and onto the real palette. */
+  --background: var(--surface);
+  --foreground: var(--ink);
+  --muted: var(--surface-2);
+  --muted-foreground: var(--ink-3);
+  --border: var(--surface-3);
+  --ring: var(--amber-deep);
+  --frame: #ffffff;
+  --accent: var(--amber);
+  --card-primary: var(--amber);
+  --card-secondary: var(--surface-2);
+  --card-foreground: var(--ink);
+  --card-foreground-muted: var(--ink-2);
+  --phone-screen: var(--surface);
+
+  /* Named `--stack-*`, not `--font-*`. Tailwind's `@theme` owns the `--font-*`
+     namespace, so declaring `--font-display: var(--font-display)` below would
+     be self-referential, resolve to guaranteed-invalid, and silently drop the
+     face — which is exactly what it did. */
+  --stack-sans: var(--font-sentient), Georgia, "Times New Roman", serif;
+  --stack-display: var(--font-gambarino), Georgia, "Times New Roman", serif;
+  /* Reserved for content that genuinely is data: handles, wei, hashes, curl
+     output. Never for labels, eyebrows or captions. */
+  --stack-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+/*
+ * The dashboard ships its own dark surface and sets `color-scheme: dark`
+ * locally. The marketing pages are committed to light: the artwork is lit from
+ * a single low sun, and there is no honest dark counterpart to that.
+ */
+.dark {
+  --frame: #0e1a20;
+}
+
+@theme inline {
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-amber: var(--amber);
+  --color-amber-deep: var(--amber-deep);
+  --color-teal: var(--teal);
+  --color-teal-lift: var(--teal-lift);
+  --color-sand: var(--sand);
+  --color-sand-lift: var(--sand-lift);
+  --color-daylight: var(--daylight);
+  --color-daylight-line: var(--daylight-line);
+  --color-sea-deep: var(--sea-deep);
+  --color-grout: var(--grout);
+  --color-grout-2: var(--grout-2);
+
+  --color-frame: var(--frame);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-ring: var(--ring);
+  --color-accent: var(--accent);
+  --color-card-primary: var(--card-primary);
+  --color-card-secondary: var(--card-secondary);
+  --color-card-foreground: var(--card-foreground);
+  --color-card-foreground-muted: var(--card-foreground-muted);
+  --color-phone-screen: var(--phone-screen);
+
+  --font-sans: var(--stack-sans);
+  --font-display: var(--stack-display);
+  --font-mono: var(--stack-mono);
+}
+
+html {
+  color-scheme: light;
+  scroll-behavior: smooth;
+  overflow-x: hidden;
+}
+
+html,
+body {
+  overscroll-behavior-x: none;
+}
+
+body {
+  overflow-x: hidden;
+  background-color: var(--surface);
+  color: var(--ink);
+  font-family: var(--stack-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+  background-color: var(--ink);
+  color: var(--surface);
+}
+
+/*
+ * Slabs — the panels that sit on the page as physical objects.
+ *
+ * The depth here is lit, not floated. The mosaic is lit by one low sun sitting
+ * left of centre, so every panel is lit by that same source: a bright lip along
+ * the top edge where the light lands, a darker inner line along the bottom edge
+ * turned away from it, a hairline in the panel's own colour rather than a drawn
+ * outline, and a cast shadow that drifts a little to the right because the sun
+ * is to the left.
+ *
+ * The cast is three layers at increasing blur with negative spread, so it stays
+ * tight under the panel and falls off to nothing. It is tinted to the panel's
+ * own colour, never black, and it never traces the panel's shape — no bloom, no
+ * second box, no halo.
+ */
+.slab,
+.slab-deep {
+  /* Light falling across the face: the top of the slab catches the sun, the
+     bottom turns away from it. This is what gives the panel form — without it
+     a flat fill plus an edge highlight still reads as a sticker. Very low
+     contrast and laid over a solid colour, so there is nothing for banding to
+     grab onto. */
+  background-image: linear-gradient(
+    180deg,
+    var(--slab-lit) 0%,
+    transparent 44%,
+    var(--slab-shade) 100%
+  );
+}
+
+.slab {
+  --slab-lit: rgba(255, 255, 255, 0.55);
+  --slab-shade: rgba(92, 76, 50, 0.05);
+  box-shadow:
+    /* the lip along the top edge, where the light actually lands */
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    inset 0 -1px 0 rgba(92, 76, 50, 0.15),
+    inset 0 0 0 1px rgba(150, 132, 100, 0.15),
+    /* contact, then two casts drifting right as the sun is to the left */
+    0 1px 2px -1px rgba(74, 60, 38, 0.10),
+    1px 8px 14px -6px rgba(74, 60, 38, 0.16),
+    3px 22px 40px -18px rgba(74, 60, 38, 0.24);
+}
+
+.slab-deep {
+  --slab-lit: rgba(190, 228, 234, 0.06);
+  --slab-shade: rgba(0, 0, 0, 0.11);
+  box-shadow:
+    inset 0 1px 0 rgba(190, 228, 234, 0.26),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.35),
+    inset 0 0 0 1px rgba(122, 176, 184, 0.13),
+    0 1px 2px -1px rgba(5, 26, 32, 0.26),
+    1px 8px 14px -6px rgba(5, 26, 32, 0.34),
+    3px 22px 40px -18px rgba(5, 26, 32, 0.42);
+}
+
+/*
+ * Display type. Gambarino, self-hosted; sizes are set per component. Optical
+ * tightening only — a big serif needs less letter-spacing, never less air
+ * between the lines.
+ */
+.display {
+  font-family: var(--stack-display);
+  font-weight: 400;
+  letter-spacing: -0.021em;
+  line-height: 1.04;
+}
+
+/* Data. Tabular figures so columns of wei actually line up. */
+.data {
+  font-family: var(--stack-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@keyframes logo-marquee {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+.animate-logo-marquee {
+  animation: logo-marquee 44s linear infinite;
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-logo-marquee {
+    animation: none;
+  }
+}
+
+.skip-to-content {
+  position: absolute;
+  left: -9999px;
+  top: 1rem;
+  z-index: 9999;
+  padding: 0.75rem 1rem;
+  background: var(--surface);
+  border: 2px solid var(--ink);
+  border-radius: 0.375rem;
+  font-weight: 600;
+  text-decoration: none;
+  color: var(--ink);
+}
+
+.skip-to-content:focus {
+  left: 1rem;
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.focus-ring:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.terminal {
+  overflow: hidden;
+  border-radius: 1rem;
+  border: 1px solid var(--border);
+  background: var(--frame);
+}
+
+.terminal-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  border-bottom: 1px solid var(--border);
+  padding: 0.625rem 0.875rem;
+}
+
+.terminal-dot {
+  height: 0.625rem;
+  width: 0.625rem;
+  border-radius: 9999px;
+}
+
+/* Indeterminate progress for values still being decrypted in the Nox TEE.
+   Transform only, so it never triggers layout, and it animates an element
+   that is already on screen — content is never gated on it. */
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(200%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-\[shimmer_1\.4s_ease-in-out_infinite\] {
+    animation: none;
+    transform: none;
+    width: 100%;
+    opacity: 0.5;
+  }
+}
