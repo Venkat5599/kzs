@@ -231,6 +231,57 @@ After step 4 the contract holds a plain `uint256`. That is the hinge: an
 unmodified Uniswap router can consume it without knowing Nox exists.
 
 
+### The swap — composability, executed
+
+`bun run --cwd contracts prove:swap` routes the proven aggregate through a real
+Uniswap V3 pool created by **Uniswap's own factory**.
+
+| Step | Transaction |
+|---|---|
+| Create + initialise pool (Uniswap factory) | [`0x7c565f64…645208`](https://sepolia.etherscan.io/tx/0x7c565f64f8f12bd28b1fa97a20240ba4b454991c41e4b736f4fff67c0d645208) |
+| Add liquidity (Uniswap position manager) | [`0x327c775c…8b6ed2`](https://sepolia.etherscan.io/tx/0x327c775caf27a23c5386c57eb95400424320861efed906266b528d0f628b6ed2) |
+| **`routeEpoch` — swap via SwapRouter02** | [`0x0d0b8e76…b60621`](https://sepolia.etherscan.io/tx/0x0d0b8e76e362752b402804c048c38bf126240ff806d1bbfea9a745d83ab60621) |
+
+```
+epoch 0: 6 settlements -> proven aggregate 120000
+this number is the ONLY thing crossing into public infrastructure
+
+5. routeEpoch - through Uniswap's deployed SwapRouter02
+   swapped 120000 -> received 119639
+   PASS  the swap executed against a real Uniswap V3 pool
+   PASS  the router spent exactly the proven aggregate
+   PASS  the epoch is marked routed, so it cannot be spent twice
+
+  Uniswap saw: one counterparty, one amount, one swap.
+  Uniswap did NOT see: any per-settlement amount, cap, or identity.
+```
+
+`120000 -> 119639` is the 0.3% fee tier doing exactly what it should. The pool,
+the factory, the position manager and the router are all Uniswap's deployed
+contracts, used through their existing ABIs. This repository contains no forked
+AMM — only [`IV3SwapRouter.sol`](./contracts/src/interfaces/IV3SwapRouter.sol),
+an interface declaration.
+
+**The complete path, all of it on Sepolia:**
+
+```
+6 confidential settlements   amounts, caps and verdicts encrypted
+   3 authorized, 3 refused   refusals indistinguishable on-chain
+            |
+            v
+   encrypted epoch total     no address or amount ever emitted
+            |
+      flushEpoch             one deliberate declassification
+            |
+            v
+      aggregate 120000       verified on-chain by TEE proof
+            |
+       routeEpoch
+            v
+   Uniswap V3 swap           unmodified, unaware, composable
+```
+
+
 ### A bug this found
 
 The first live run reverted with `PublicHandleACLForbidden()`. `Nox.toEuint256(0)`
@@ -314,18 +365,18 @@ Honest about what is proven and what is not.
 
 | Piece | State |
 |---|---|
-| `KairosVault` — branchless auth on Nox primitives | **Deployed to Sepolia** |
-| `KairosSettlementRouter` — unmodified Uniswap V3 | **Deployed to Sepolia** |
+| `KairosVault` — branchless auth on Nox primitives | **Deployed + proven on Sepolia** |
+| Full cycle: fund, register, settle under/over cap | **Proven live** |
+| `flushEpoch` + `proveEpochAggregate` | **Proven live** |
+| `KairosSettlementRouter` → real Uniswap V3 swap | **Executed live** |
 | Router test suite | 13 passing |
 | `packages/shared` — fail-closed verdict rule | 12 passing |
-| Vault encrypted paths against live Nox | Not yet exercised end to end |
 | `apps/gateway`, remaining packages, `services/*` | In progress |
 | Dashboard wired to a live gateway | In progress |
 
-The vault is deployed and its constructor executed real Nox calls — the treasury
-and epoch handles on-chain are genuine encrypted handles. A full
-fund → register → settle → flush cycle against the live TEE has not yet been run,
-and this table will say so until it has.
+The confidential core is complete and verified end to end on Sepolia. What
+remains is the service layer around it — the gateway, the remaining packages,
+and wiring the dashboard to live chain state.
 
 ---
 

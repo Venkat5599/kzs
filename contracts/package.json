@@ -11,7 +11,8 @@
     "lint": "prettier --check 'src/**/*.sol'",
     "deploy:sepolia": "hardhat run script/deploy.ts --network sepolia",
     "prove:live": "bun script/prove-live.ts",
-    "prove:flush": "bun script/prove-flush.ts"
+    "prove:flush": "bun script/prove-flush.ts",
+    "prove:swap": "hardhat run script/prove-swap.ts --network sepolia"
   },
   "dependencies": {
     "@iexec-nox/handle": "^0.1.0-beta.13",
