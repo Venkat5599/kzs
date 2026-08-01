@@ -23,7 +23,6 @@ import {IConfidentialPolicy} from "./IConfidentialPolicy.sol";
 contract CapPolicy is IConfidentialPolicy {
     error NotOwner();
     error NotVault();
-    error SubjectNotRegistered(address subject);
 
     event SubjectRegistered(address indexed subject);
     event SubjectRemoved(address indexed subject);
@@ -98,10 +97,18 @@ contract CapPolicy is IConfidentialPolicy {
         bytes calldata /* context */
     ) external override returns (ebool approved) {
         if (msg.sender != vault) revert NotVault();
-        // Registration is public, so reverting on it leaks nothing.
-        if (!_registered[subject]) revert SubjectNotRegistered(subject);
 
-        approved = Nox.le(amount, _cap[subject]);
+        // An unregistered subject is REFUSED, not reverted.
+        //
+        // Reverting here would publish the refusal: the settlement transaction
+        // would fail, and an observer could tell an unregistered agent from one
+        // that merely exceeded its cap. That is exactly the bug that was fixed
+        // in KairosVault.revokeAgent, and it was still present here.
+        //
+        // An unregistered subject compares against an encrypted zero, which no
+        // positive amount satisfies, so it travels the ordinary branchless path.
+        euint256 cap = _registered[subject] ? _cap[subject] : Nox.toEuint256(0);
+        approved = Nox.le(amount, cap);
 
         Nox.allowThis(approved);
         // Transient: the vault needs this verdict for this transaction only.

@@ -28,9 +28,9 @@ const FACTORY = getAddress("0x0227628f3F023bb0B980b67D528571c95c6DaC1c");
 const POSITION_MANAGER = getAddress("0x1238536071E1c677A632429e3655c799b22cDA52");
 const SWAP_ROUTER = getAddress("0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E");
 
-const VAULT = getAddress(process.env.VAULT_ADDRESS ?? "0xbe6a1a70885540276203d7211dfba0e7be625344");
+const VAULT = getAddress(process.env.VAULT_ADDRESS ?? "0x1b5919e3ec31daaa88a69ca4bf27aa83dbed57f8");
 const ROUTER = getAddress(
-  process.env.SETTLEMENT_ROUTER_ADDRESS ?? "0xaddf7b8c31fbccfc4a4d71332becd453ca9d2182",
+  process.env.SETTLEMENT_ROUTER_ADDRESS ?? "0x58baeb4a1a246235df7e84d45ed209daad2017b2",
 );
 
 const FEE = 3000;

@@ -89,9 +89,17 @@ contract CompositePolicy is IConfidentialPolicy {
 
         euint256 zero = Nox.toEuint256(0);
         euint256 one = Nox.toEuint256(1);
-        euint256 acc = one;
 
         uint256 n = _policies.length;
+
+        // An empty composite must REFUSE, not approve.
+        //
+        // Starting the accumulator at one and skipping the loop would make an
+        // unconfigured composite authorize everything — a vault whose owner
+        // installed the policy but had not yet populated it would be wide open,
+        // and nothing on-chain would look wrong. Seeding from `n` makes the
+        // safe direction the default.
+        euint256 acc = n == 0 ? zero : one;
         for (uint256 i = 0; i < n; ++i) {
             // Same reason the vault grants us access: each child is its own
             // contract and would otherwise revert on the first Nox op.

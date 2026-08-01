@@ -34,7 +34,6 @@ import {IConfidentialPolicy} from "./IConfidentialPolicy.sol";
 contract VelocityPolicy is IConfidentialPolicy {
     error NotOwner();
     error NotVault();
-    error SubjectNotRegistered(address subject);
 
     event SubjectRegistered(address indexed subject);
     event SubjectReset(address indexed subject);
@@ -94,14 +93,25 @@ contract VelocityPolicy is IConfidentialPolicy {
         bytes calldata /* context */
     ) external override returns (ebool approved) {
         if (msg.sender != vault) revert NotVault();
-        if (!_registered[subject]) revert SubjectNotRegistered(subject);
 
-        // Would this settlement take the subject past its total allowance?
-        // `add` rather than `safeAdd`: an overflow here would require an
-        // allowance near 2^256, and the safe variant's flag would need
-        // composing into the verdict for no practical gain.
-        euint256 projected = Nox.add(_consumed[subject], amount);
-        approved = Nox.le(projected, _allowance[subject]);
+        // Unregistered subjects are refused branchlessly — see CapPolicy for
+        // why reverting here would publish the refusal.
+        euint256 zero = Nox.toEuint256(0);
+        euint256 consumed = _registered[subject] ? _consumed[subject] : zero;
+        euint256 allowance = _registered[subject] ? _allowance[subject] : zero;
+
+        // safeAdd, not add. A plain add can wrap: an amount near 2^256 would
+        // overflow `projected` to a small number that passes the comparison,
+        // approving a settlement far beyond the allowance. safeAdd reports the
+        // overflow as an encrypted flag instead.
+        (ebool noOverflow, euint256 projected) = Nox.safeAdd(consumed, amount);
+        ebool withinAllowance = Nox.le(projected, allowance);
+
+        // approved = noOverflow AND withinAllowance, composed arithmetically
+        // because Nox has no boolean operators on ebool.
+        euint256 one = Nox.toEuint256(1);
+        euint256 gated = Nox.select(noOverflow, Nox.select(withinAllowance, one, zero), zero);
+        approved = Nox.eq(gated, one);
 
         Nox.allowThis(approved);
         Nox.allowTransient(approved, msg.sender);
@@ -110,7 +120,10 @@ contract VelocityPolicy is IConfidentialPolicy {
     /// @inheritdoc IConfidentialPolicy
     function onSettled(address subject, euint256 debited) external override {
         if (msg.sender != vault) revert NotVault();
-        if (!_registered[subject]) revert SubjectNotRegistered(subject);
+        // Unregistered subjects were already refused, so `debited` is an
+        // encrypted zero and accumulating it is harmless. Returning early would
+        // make gas depend on registration status.
+        if (!_registered[subject]) return;
 
         // `debited` is an encrypted zero when the settlement was refused, so
         // this runs identically either way.

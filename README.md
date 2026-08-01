@@ -14,14 +14,14 @@
 
 | | Address |
 |---|---|
-| **KairosRingRegistry** | [`0x70d34c99a760be16bb837ddd54590a5269844d6e`](https://sepolia.etherscan.io/address/0x70d34c99a760be16bb837ddd54590a5269844d6e) |
-| **KairosVault** (ring 0) | [`0xbe6a1a70885540276203d7211dfba0e7be625344`](https://sepolia.etherscan.io/address/0xbe6a1a70885540276203d7211dfba0e7be625344) |
-| **KairosSettlementRouter** | [`0xaddf7b8c31fbccfc4a4d71332becd453ca9d2182`](https://sepolia.etherscan.io/address/0xaddf7b8c31fbccfc4a4d71332becd453ca9d2182) |
+| **KairosRingRegistry** | [`0x00b439e437dabea9d3562f40dacd42be8372fee8`](https://sepolia.etherscan.io/address/0x00b439e437dabea9d3562f40dacd42be8372fee8) |
+| **KairosVault** (ring 0) | [`0x1b5919e3ec31daaa88a69ca4bf27aa83dbed57f8`](https://sepolia.etherscan.io/address/0x1b5919e3ec31daaa88a69ca4bf27aa83dbed57f8) |
+| **KairosSettlementRouter** | [`0x58baeb4a1a246235df7e84d45ed209daad2017b2`](https://sepolia.etherscan.io/address/0x58baeb4a1a246235df7e84d45ed209daad2017b2) |
 | NoxCompute (protocol) | [`0x24Ef36Ec5b626D7DCD09a98F3083c2758F0F77bF`](https://sepolia.etherscan.io/address/0x24Ef36Ec5b626D7DCD09a98F3083c2758F0F77bF) |
-| CompositePolicy | [`0x28837adc41f0c85f014a7ea9122d26c1b2e6f45a`](https://sepolia.etherscan.io/address/0x28837adc41f0c85f014a7ea9122d26c1b2e6f45a) |
-| ├ CapPolicy | [`0x6c262c1e70fa8cb46f3c890dc3dc9a7b8f53307c`](https://sepolia.etherscan.io/address/0x6c262c1e70fa8cb46f3c890dc3dc9a7b8f53307c) |
-| ├ VelocityPolicy | [`0xe3ad56f18b79bb00073940495ce1f42e618752b5`](https://sepolia.etherscan.io/address/0xe3ad56f18b79bb00073940495ce1f42e618752b5) |
-| └ AllowlistPolicy | [`0x0a689588422ad9d45d50c5dd3f374b6413f3480c`](https://sepolia.etherscan.io/address/0x0a689588422ad9d45d50c5dd3f374b6413f3480c) |
+| CompositePolicy | [`0x1de0cde89f528948783776af5737a9510ce9f89a`](https://sepolia.etherscan.io/address/0x1de0cde89f528948783776af5737a9510ce9f89a) |
+| ├ CapPolicy | [`0xa3917c56d009e53c0fb58536f2765fc7ea41f7c6`](https://sepolia.etherscan.io/address/0xa3917c56d009e53c0fb58536f2765fc7ea41f7c6) |
+| ├ VelocityPolicy | [`0x484e3d6865b6389ae8b9f6b479ed97cc2dafc9d8`](https://sepolia.etherscan.io/address/0x484e3d6865b6389ae8b9f6b479ed97cc2dafc9d8) |
+| └ AllowlistPolicy | [`0x4a8c63103478484d74caf73cc7a28729a45c616b`](https://sepolia.etherscan.io/address/0x4a8c63103478484d74caf73cc7a28729a45c616b) |
 | Uniswap V3 SwapRouter02 | [`0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E`](https://sepolia.etherscan.io/address/0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E) |
 
 Chain `11155111`. The Uniswap router above is **Uniswap's own deployment**. Kairos
