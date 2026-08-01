@@ -11,7 +11,7 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
 export const metadata: Metadata = createMetadata({
-  title: "Kairos — a budget your agent cannot exceed or reveal",
+  title: "Kairos — private budgets, public settlement",
   description: siteConfig.description,
   path: "/",
 });

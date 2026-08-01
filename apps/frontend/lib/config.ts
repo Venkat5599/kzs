@@ -2,22 +2,33 @@
  * Kairos — landing page copy.
  *
  * Rule for everything in this file: no claim that is not already true and
- * checkable. The addresses and endpoints below are the live ones, and the
+ * checkable. The addresses below are the live Sepolia deployment, and the
  * limitations are stated in the same voice as the features.
+ *
+ * The framing leads with what was actually built — a confidentiality layer over
+ * public DeFi infrastructure — rather than with the agent use case. Agents are
+ * the first tenant of the vault, not the product.
  */
+
+const VAULT = "0xa3cca0a1611b7157c4211789eebf96a5234330e0";
+const ROUTER = "0x5e0c9e0cedc2c34eb8147b27d9dd9abb9c5d570b";
+const UNISWAP_ROUTER = "0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E";
+const EXPLORER = "https://sepolia.etherscan.io/address";
 
 export const siteConfig = {
   name: "Kairos",
-  tagline: "Confidential spending limits for AI agents",
+  tagline: "A confidentiality layer for public DeFi",
   description:
-    "Give an AI agent a budget it cannot exceed, without publishing the budget. Caps, balances and settlement amounts stay encrypted inside iExec Nox and are compared in a TEE. x402 and MCP are left exactly as they are.",
+    "Enforce a spending budget on-chain without publishing the budget, the balance, or a single amount. Caps and settlements stay encrypted inside iExec Nox and are compared in a TEE. The batch then settles through an unmodified Uniswap V3 pool.",
   url: "https://kairos.dev",
   twitter: "@kairos",
   repo: "https://github.com/Venkat5599/kzs",
   gateway: "https://agentfabric-api.187.127.137.136.sslip.io",
-  vault: "0xe417e9e36291a2d74121db0d3ce013854f5123cc",
-  vaultExplorer:
-    "https://sepolia.etherscan.io/address/0xe417e9e36291a2d74121db0d3ce013854f5123cc",
+  vault: VAULT,
+  vaultExplorer: `${EXPLORER}/${VAULT}`,
+  router: ROUTER,
+  routerExplorer: `${EXPLORER}/${ROUTER}`,
+  uniswapRouterExplorer: `${EXPLORER}/${UNISWAP_ROUTER}`,
   nav: {
     cta: { text: "Open dashboard", href: "/dashboard" },
   },
@@ -26,9 +37,9 @@ export const siteConfig = {
 export const heroConfig = {
   /* Two lines. A display line that wraps to three or four is a staircase, not
      a composition. */
-  headline: ["A budget your agent", "cannot exceed or reveal"],
+  headline: ["Private budgets.", "Public settlement."],
   subheadline:
-    "Enforce an agent's spending cap on-chain while the cap, the balance and every settlement amount stay encrypted. The comparison happens inside the TEE; the chain only ever stores handles.",
+    "A spending cap enforced on-chain while the cap, the balance and every amount stay encrypted. The comparison happens inside the TEE; the chain only ever stores handles. The batch then swaps through Uniswap V3 — unmodified, unaware, still composable.",
   primary: { text: "Open dashboard", href: "/dashboard" },
   secondary: { text: "Verify it yourself", href: "#verify" },
 };
@@ -38,10 +49,10 @@ export const techStackConfig = {
   title: "Built on",
   items: [
     { name: "iExec Nox", description: "Confidential compute in a TEE" },
-    { name: "Ethereum Sepolia", description: "Settlement and session keys" },
+    { name: "Uniswap V3", description: "Settlement, used unmodified" },
+    { name: "Ethereum Sepolia", description: "Where both contracts live" },
     { name: "x402", description: "HTTP 402 metering per call" },
     { name: "MCP", description: "Agent tool discovery" },
-    { name: "Safe", description: "Spends from an unmodified Safe" },
   ],
 };
 
@@ -57,14 +68,14 @@ export const leakConfig: {
 } = {
   /* Two lines at display size. A headline that wraps to four is a staircase
      of short rows, not a composition. */
-  statement: "Every metered call leaves an operational diary.",
-  body: "Run a fleet of agents against metered APIs over x402 and the chain records it all in the open. Which agent is active, how often, against which vendor, for how much, and how much of its allowance is left. Anyone can read it. For a company that is a competitive leak before it is a privacy problem. The naive fix — don't enforce the budget on-chain — is worse: then the cap is a suggestion, and one compromised prompt drains the treasury.",
+  statement: "Public rails publish an operational diary.",
+  body: "Transparency is the right default for a settlement standard. It is the wrong default for a budget. Meter spending through public infrastructure and the chain records who is spending, how often, against which counterparty, for how much, and how much allowance remains. Anyone can read it. For a business that is a competitive leak before it is a privacy problem. The naive fix — don't enforce the limit on-chain — is worse: then the cap is a suggestion, and one compromised caller drains the treasury.",
   plain: {
-    label: "Plain x402 settlement",
+    label: "A settlement in the open",
     caption: "Every field is public, and permanently linkable.",
     rows: [
-      ["from", "0x91c4…7a20", "which agent"],
-      ["to", "0x5ef0…13bb", "which vendor"],
+      ["from", "0x91c4…7a20", "who is spending"],
+      ["to", "0x5ef0…13bb", "and with whom"],
       ["value", "1500 wei", "what it cost"],
       ["block", "8421907", "exactly when"],
     ],
@@ -73,17 +84,17 @@ export const leakConfig: {
     label: "The same settlement on Kairos",
     caption: "One event. No addresses, no amount, only the epoch.",
     rows: [
-      ["event", "PrivateSettlement", "that one occurred"],
+      ["event", "Settled", "that one occurred"],
       ["epoch", "4", "which batch it joined"],
       ["amount", "sealed", "never emitted"],
-      ["agent", "sealed", "never emitted"],
+      ["counterparty", "sealed", "never emitted"],
     ],
   },
 };
 
 /**
- * Source: README, "What is hidden, and what is not". Being precise about this
- * matters more than the feature list, so it is reproduced rather than softened.
+ * Being precise about this matters more than the feature list, so it is stated
+ * rather than softened. The limitation is not buried.
  */
 export const disclosureConfig = {
   title: "What is hidden, and what is not",
@@ -93,10 +104,10 @@ export const disclosureConfig = {
     note: "Handles on-chain, decryptable only by permitted accounts.",
     items: [
       "The treasury budget and what remains of it",
-      "Each agent's per-call spending cap",
-      "Each agent's cumulative spend",
+      "Each caller's per-call spending cap",
+      "Each caller's cumulative spend",
       "The amount of any individual settlement",
-      "Whether a settlement was authorized or rejected",
+      "Whether a settlement was authorized or refused",
     ],
   },
   open: {
@@ -107,80 +118,90 @@ export const disclosureConfig = {
       "How many settlements a batch contained",
       "The relayer address that submitted the transaction",
       "The aggregate total of a closed epoch, once flushed",
-      "The vault's existence and its owner",
+      "The swap that aggregate settles into",
     ],
   },
   limitation: {
     label: "Known limitation, stated plainly",
-    body: "msg.sender is inherently public. Kairos routes every settlement through one gateway relayer, so on-chain all settlements share a sender and per-agent activity is not distinguishable — but the relayer itself is visible, and it learns what it relays.",
+    body: "msg.sender is inherently public. Kairos routes every settlement through one gateway relayer, so on-chain all settlements share a sender and per-caller activity is not distinguishable — but the relayer itself is visible, and it learns what it relays.",
   },
 };
 
-/** The four movements of a payment. Deliberately not a numbered list on a rail. */
+/** The five movements of a payment. Deliberately not a numbered list on a rail. */
 export const pathConfig = {
   title: "How a payment moves",
-  lede: "Individual debits never move funds on their own. That is what breaks the one-transaction-per-API-call trail.",
+  lede: "No individual debit ever touches a public pool on its own. That is what breaks the one-transaction-per-call trail.",
   steps: [
     {
       key: "settle",
       title: "Settle",
-      body: "The agent submits an encrypted amount. Two encrypted comparisons run inside the TEE: within cap, and within budget.",
-      detail: "amount ≤ cap · budget ≥ amount",
+      body: "An encrypted amount arrives. Two encrypted comparisons run inside the TEE: within cap, and within budget. Neither result is ever revealed.",
+      detail: "Nox.le(amount, cap)",
     },
     {
       key: "authorize",
       title: "Authorize",
-      body: "An encrypted boolean cannot gate a require — reverting would leak the comparison. The contract debits the amount or debits zero, then publishes the outcome as an encrypted flag.",
+      body: "An encrypted boolean cannot gate a require — reverting would broadcast the comparison. So the contract debits the amount or debits zero, and the transaction succeeds either way.",
       detail: "Nox.select(ok, amount, 0)",
     },
     {
       key: "accumulate",
       title: "Accumulate",
-      body: "The debit joins an encrypted epoch total instead of moving money, so no single transaction corresponds to a single API call.",
-      detail: "epochTotal += debited",
+      body: "The debit joins an encrypted epoch total through Nox's own atomic transfer, so no single transaction corresponds to a single call.",
+      detail: "Nox.transfer(treasury, epoch)",
     },
     {
       key: "flush",
       title: "Flush",
-      body: "The owner closes the epoch. One aggregate is released for public decryption and leaves the Safe as a single transfer covering every payment in the batch.",
+      body: "The owner closes the epoch and releases one aggregate for public decryption, proven on-chain against the TEE. It covers every payment in the batch and cannot be decomposed back into them.",
       detail: "one number, N payments",
+    },
+    {
+      key: "route",
+      title: "Route",
+      body: "That aggregate settles through Uniswap V3 over its existing ABI. No fork, no wrapper. The pool sees one counterparty and one batch total — strictly less than a public rail publishes per individual call.",
+      detail: "exactInputSingle",
     },
   ],
 };
 
-/** Real commands against the live gateway, with their real response shapes. */
+/**
+ * Real reads against the live Sepolia deployment.
+ *
+ * Keep this at exactly three: the section renders on a three-column grid.
+ */
 export const verifyConfig = {
   title: "Verify it yourself",
-  lede: "Every claim on this page is checkable from a terminal right now. Nothing here is a mock.",
+  lede: "Both contracts are live on Sepolia. Every claim on this page is checkable from a terminal right now.",
   checks: [
     {
-      label: "The gateway is on the real chain",
-      command: "curl -s $GATEWAY/chain/status",
-      output: `{ "configured": true,
-  "demoMode": false,
-  "network": "testnet",
-  "chainId": 11155111 }`,
+      label: "The vault is real, and its handles are encrypted",
+      command: `cast call ${VAULT.slice(0, 10)}… "treasuryHandle()"`,
+      output: `0x0000aa36a723006d8c4928a0
+2417aca1e1d96b6c5a87d991e
+04607721059d189
+
+# a Nox handle, not a value`,
     },
     {
-      label: "The vault is live, with its relayer and epoch",
-      command: "curl -s $GATEWAY/nox/status",
-      output: `{ "configured": true,
-  "vaultAddress": "0xe417e9e3…5123cc",
-  "relayer": "0xEEfbC8d6…Ba4eBa",
-  "network": 11155111,
-  "epoch": 1 }`,
+      label: "Settlement events carry no address and no amount",
+      command: `cast logs --address ${VAULT.slice(0, 10)}… "Settled(uint64)"`,
+      output: `topics: [ Settled, epoch ]
+data:   0x
+
+# the epoch, and nothing else`,
     },
     {
-      label: "A closed epoch reveals one aggregate, never a payment",
-      command: "curl -s $GATEWAY/nox/epoch/0",
-      output: `{ "epoch": 0,
-  "closed": true,
-  "totalWei": "38500",
-  "count": 7 }`,
+      label: "The swap router is Uniswap's own",
+      command: `cast call ${ROUTER.slice(0, 10)}… "swapRouter()"`,
+      output: `0x3bFA4769FB09eefC5a80d6E
+87c3B9C650f7Ae48E
+
+# SwapRouter02, unmodified`,
     },
   ],
   footnote:
-    "count is how many settlements the batch absorbed. totalWei covers all of them, and cannot be decomposed back into the payments that produced it.",
+    "The aggregate released by a flushed epoch covers every settlement it absorbed, and cannot be decomposed back into the payments that produced it. What reaches Uniswap is that one number.",
 };
 
 export const footerConfig = {
@@ -195,19 +216,19 @@ export const footerConfig = {
       ],
     },
     {
-      heading: "Build",
+      heading: "On-chain",
       links: [
-        { label: "Publish a SKILL.md", href: "/dashboard/create" },
-        { label: "Session keys", href: "/dashboard/session-keys" },
-        { label: "Marketplace", href: "/dashboard/marketplace" },
+        { label: "KairosVault", href: `${EXPLORER}/${VAULT}` },
+        { label: "Settlement router", href: `${EXPLORER}/${ROUTER}` },
+        { label: "Uniswap SwapRouter02", href: `${EXPLORER}/${UNISWAP_ROUTER}` },
       ],
     },
     {
       heading: "Source",
       links: [
         { label: "GitHub", href: "https://github.com/Venkat5599/kzs" },
-        { label: "Vault contract", href: siteConfig.vaultExplorer },
-        { label: "iExec Nox", href: "https://docs.iex.ec/nox-protocol" },
+        { label: "iExec Nox", href: "https://docs.noxprotocol.io" },
+        { label: "Uniswap V3", href: "https://docs.uniswap.org" },
       ],
     },
   ],
