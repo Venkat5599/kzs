@@ -1,10 +1,44 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Plus, ArrowLeft, Store, Loader2, Terminal, Search, Zap, Play, Trash2 } from "lucide-react";
 import { Panel, Field, Input, Textarea, Button, Toggle, Chip, Empty, short, CopyBtn } from "./ui";
 import { useWallet } from "@/lib/wallet";
 import { createFabricApi, gatewayUrl, listFabricApis, runFabricApi, type FabricApi } from "@/lib/api";
+
+/**
+ * One numbered group of related fields.
+ *
+ * The form was a flat run of fifteen inputs, which reads as a wall and gives no
+ * sense of progress or of what is required. Three short steps plus a disclosure
+ * for the optional half is the whole fix.
+ */
+function Step({
+  n,
+  title,
+  desc,
+  children,
+}: {
+  n: number;
+  title: string;
+  desc: string;
+  children: ReactNode;
+}) {
+  return (
+    <section className="space-y-4">
+      <div className="flex items-start gap-3">
+        <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-accent/40 bg-accent/10 text-xs font-semibold text-accent">
+          {n}
+        </span>
+        <div>
+          <h3 className="text-sm font-semibold text-white">{title}</h3>
+          <p className="text-xs text-neutral-500">{desc}</p>
+        </div>
+      </div>
+      <div className="space-y-5 pl-9">{children}</div>
+    </section>
+  );
+}
 
 export function ApisSection() {
   const [creating, setCreating] = useState(false);
@@ -290,28 +324,44 @@ function CreateApiForm({ onDone, onCancel }: { onDone: () => void; onCancel: () 
 
       <div>
         <h1 className="text-4xl font-semibold tracking-tight text-white">Create API</h1>
-        <p className="mt-1 text-neutral-400">Set up a payment-gated API proxy using the x402 protocol.</p>
+        <p className="mt-1 max-w-lg text-neutral-400">
+          Charge for an API you already have. We sit in front of it and only
+          call it once the caller has paid.
+        </p>
       </div>
 
       <Panel>
         <div className="mb-6 flex items-start justify-between gap-4">
           <div>
-            <p className="text-lg font-semibold text-white">Monetize your API</p>
-            <p className="text-sm text-neutral-500">Create a payment-gated proxy for your existing endpoint.</p>
+            <p className="text-lg font-semibold text-white">Three quick steps</p>
+            <p className="text-sm text-neutral-500">Takes about a minute. Everything else has a sensible default.</p>
           </div>
-          <Button variant="outline">Import curl</Button>
+          <Button variant="outline">Paste a curl command</Button>
         </div>
 
-        <div className="space-y-5">
+        <div className="space-y-8">
+          <Step n={1} title="What are you selling?" desc="The service people will pay to use.">
           <Field label="Name it" hint="What people will see in the marketplace.">
             <Input value={f.name} onChange={(e) => set("name")(e.target.value)} placeholder="Weather lookup" />
-          </Field>
-          <Field label="Short web name" hint="Optional. Used in the link, like kairos.app/s/weather-lookup. Leave blank and we make one from the name.">
-            <Input value={f.slug} onChange={(e) => set("slug")(e.target.value)} placeholder="weather-lookup" />
           </Field>
           <Field label="What does it do?" hint="Optional, but it is what convinces someone to use it.">
             <Textarea rows={3} value={f.description} onChange={(e) => set("description")(e.target.value)} placeholder="Returns the current temperature for any city." />
           </Field>
+          <Field label="What we call when someone pays" hint="The web address of the service you are reselling. We only call it after payment clears.">
+            <Input value={f.target_url} onChange={(e) => set("target_url")(e.target.value)} placeholder="https://api.example.com/v1/endpoint" />
+          </Field>
+          </Step>
+
+          <Step n={2} title="What does it cost?" desc="Every payment goes straight to your wallet.">
+          <Field label="Price per use" hint="In wei, the smallest unit of ETH. 1000 is a fraction of a cent — fine for testing.">
+            <Input type="number" step="1" value={f.price} onChange={(e) => set("price")(e.target.value)} />
+          </Field>
+          <Field label="Where you get paid" hint="Your wallet address — the long code starting 0x. Every payment lands here.">
+            <Input value={f.payment_address} onChange={(e) => set("payment_address")(e.target.value)} className="font-mono" placeholder="0x1234…" />
+          </Field>
+          </Step>
+
+          <Step n={3} title="Where does it show up?" desc="How people find it in the marketplace.">
           <Field label="Category" hint="Helps people find it.">
             <select
               value={f.category}
@@ -329,11 +379,25 @@ function CreateApiForm({ onDone, onCancel }: { onDone: () => void; onCancel: () 
           <Field label="Tags" hint="Words people might search for. Separate with commas, up to 10.">
             <Input value={f.tags} onChange={(e) => set("tags")(e.target.value)} placeholder="weather, forecast, cities" />
           </Field>
-          <Field label="Where you get paid" hint="Your wallet address — the long code starting 0x. Every payment lands here.">
-            <Input value={f.payment_address} onChange={(e) => set("payment_address")(e.target.value)} className="font-mono" placeholder="0x1234…" />
-          </Field>
-          <Field label="What we call when someone pays" hint="The web address of the service you are reselling. We only call it after payment clears.">
-            <Input value={f.target_url} onChange={(e) => set("target_url")(e.target.value)} placeholder="https://api.example.com/v1/endpoint" />
+          <Toggle on={f.is_public} onChange={(v) => setF((s) => ({ ...s, is_public: v }))} label="Show in the marketplace" desc="Anyone can find and pay for it. Turn off to keep it private to you." />
+          </Step>
+
+          {/* Everything below is optional and has a sensible default. Hiding it
+              behind a disclosure is the difference between a form someone can
+              fill in and a wall of fields they abandon. */}
+          <details className="group rounded-xl border border-white/[0.08] bg-white/[0.01]">
+            <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3 text-sm text-neutral-300 hover:text-white">
+              <span>
+                <span className="font-semibold">Advanced options</span>
+                <span className="ml-2 text-xs text-neutral-500">
+                  Custom link, request type, auth headers — all optional
+                </span>
+              </span>
+              <span className="text-neutral-500 transition-transform group-open:rotate-45">+</span>
+            </summary>
+            <div className="space-y-5 border-t border-white/[0.06] p-4">
+          <Field label="Short web name" hint="Optional. Used in the link, like kairos.app/s/weather-lookup. Leave blank and we make one from the name.">
+            <Input value={f.slug} onChange={(e) => set("slug")(e.target.value)} placeholder="weather-lookup" />
           </Field>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Request type" hint="GET reads data. POST sends data. If unsure, GET.">
@@ -356,12 +420,11 @@ function CreateApiForm({ onDone, onCancel }: { onDone: () => void; onCancel: () 
           <Field label="Extra settings to pass along" hint="Optional. Put {curly braces} where a caller fills in a value — for example city={city}.">
             <Textarea rows={2} value={f.query_params} onChange={(e) => set("query_params")(e.target.value)} placeholder="city={city}&units=metric" />
           </Field>
-
           <div className="rounded-xl border border-white/[0.08] p-4">
             <div className="mb-3 flex items-center justify-between">
               <div>
                 <p className="font-semibold text-white">Variables</p>
-                <p className="text-xs text-neutral-500">Typed inputs the agent passes; substitute {"{name}"} in URL/query/body.</p>
+                <p className="text-xs text-neutral-500">Values the caller fills in. Use {"{name}"} in the address above to place them.</p>
               </div>
               <Button
                 variant="outline"
@@ -406,7 +469,7 @@ function CreateApiForm({ onDone, onCancel }: { onDone: () => void; onCancel: () 
           <div className="rounded-xl border border-white/[0.08] p-4">
             <div className="mb-3 flex items-center justify-between">
               <div>
-                <p className="font-semibold text-white">Auth Headers</p>
+                <p className="font-semibold text-white">Secret keys to send</p>
                 <p className="text-xs text-neutral-500">Sent upstream after payment. Use env:NAME to read a server secret.</p>
               </div>
               <Button variant="outline" onClick={() => setHeaders((h) => [...h, { name: "", value: "" }])}>
@@ -423,14 +486,11 @@ function CreateApiForm({ onDone, onCancel }: { onDone: () => void; onCancel: () 
               </div>
             ))}
           </div>
-
           <Field label="Example of what comes back" hint="Optional. Paste a sample so buyers know what they are getting.">
             <Textarea rows={4} value={f.example_response} onChange={(e) => set("example_response")(e.target.value)} />
           </Field>
-          <Field label="Price per use" hint="In wei, the smallest unit of ETH. 1000 is a fraction of a cent — fine for testing.">
-            <Input type="number" step="1" value={f.price} onChange={(e) => set("price")(e.target.value)} />
-          </Field>
-          <Toggle on={f.is_public} onChange={(v) => setF((s) => ({ ...s, is_public: v }))} label="Show in the marketplace" desc="Anyone can find and pay for it. Turn off to keep it private to you." />
+            </div>
+          </details>
 
           {err && <p className="text-sm text-red-400">{err}</p>}
           <div className="flex gap-3 pt-2">
@@ -438,7 +498,7 @@ function CreateApiForm({ onDone, onCancel }: { onDone: () => void; onCancel: () 
               Cancel
             </Button>
             <Button onClick={submit} disabled={busy || !f.name || !f.target_url}>
-              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />} Create Proxy
+              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />} Publish it
             </Button>
           </div>
         </div>
