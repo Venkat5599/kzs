@@ -16,7 +16,9 @@
     "build": "bun run --filter '*' build",
     "typecheck": "bun run --filter '*' typecheck",
     "lint": "bun run --filter '*' lint",
-    "test": "bun test"
+    "test": "bun run test:unit && bun run test:contracts",
+    "test:unit": "bun test packages services apps",
+    "test:contracts": "bun run --cwd contracts test"
   },
   "engines": {
     "bun": ">=1.1.0"
