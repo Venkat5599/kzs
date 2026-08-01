@@ -9,9 +9,11 @@
     "test": "hardhat test",
     "typecheck": "tsc --noEmit",
     "lint": "prettier --check 'src/**/*.sol'",
-    "deploy:sepolia": "hardhat run script/deploy.ts --network sepolia"
+    "deploy:sepolia": "hardhat run script/deploy.ts --network sepolia",
+    "prove:live": "bun script/prove-live.ts"
   },
   "dependencies": {
+    "@iexec-nox/handle": "^0.1.0-beta.13",
     "@iexec-nox/nox-protocol-contracts": "^0.2.4",
     "@openzeppelin/contracts": "^5.6.1",
     "encrypted-types": "^0.0.4"

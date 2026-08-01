@@ -14,8 +14,8 @@
 
 | | Address |
 |---|---|
-| **KairosVault** | [`0xa3cca0a1611b7157c4211789eebf96a5234330e0`](https://sepolia.etherscan.io/address/0xa3cca0a1611b7157c4211789eebf96a5234330e0) |
-| **KairosSettlementRouter** | [`0x5e0c9e0cedc2c34eb8147b27d9dd9abb9c5d570b`](https://sepolia.etherscan.io/address/0x5e0c9e0cedc2c34eb8147b27d9dd9abb9c5d570b) |
+| **KairosVault** | [`0x6d0bd38784d794da959b11e5cbeb35764b2579e4`](https://sepolia.etherscan.io/address/0x6d0bd38784d794da959b11e5cbeb35764b2579e4) |
+| **KairosSettlementRouter** | [`0x58f97ba8803bf4b19494ff316910298c8b843633`](https://sepolia.etherscan.io/address/0x58f97ba8803bf4b19494ff316910298c8b843633) |
 | NoxCompute (protocol) | [`0x24Ef36Ec5b626D7DCD09a98F3083c2758F0F77bF`](https://sepolia.etherscan.io/address/0x24Ef36Ec5b626D7DCD09a98F3083c2758F0F77bF) |
 | Uniswap V3 SwapRouter02 | [`0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E`](https://sepolia.etherscan.io/address/0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E) |
 
@@ -141,6 +141,63 @@ unreadable flag as "probably fine" would hand out paid resources for free. So
 permanently required.
 
 → [ADR-002](./docs/adr/002-fail-closed.md) · [`authorization.ts`](./packages/shared/src/authorization.ts)
+
+---
+
+## Proven on live Nox — not asserted
+
+`bun run --cwd contracts prove:live` runs a full cycle against the deployed vault
+and the real TEE. Every hash below is on Sepolia and checkable by anyone.
+
+| Step | Transaction |
+|---|---|
+| Fund treasury (encrypted `1000000`) | [`0xb03746fc…2deb2a`](https://sepolia.etherscan.io/tx/0xb03746fc76ed188642d7de7672b909c9ee6054e39a1ec17ec91b0032382deb2a) |
+| Register agent (encrypted cap `100000`) | [`0x6c609698…84469c`](https://sepolia.etherscan.io/tx/0x6c60969833b00feeec4df00745fed849df4afb2d0ee16ec95e1faa6b2084469c) |
+| Settle `40000` — **under** cap | [`0xe820d1c1…78c84211`](https://sepolia.etherscan.io/tx/0xe820d1c1e54d81ea2e34e419d0b81bea5fc8858cc9f9b4d2ef109d4478c84211) |
+| Settle `500000` — **over** cap | [`0xf3307db6…ed7fda`](https://sepolia.etherscan.io/tx/0xf3307db636eafd383a0cf041d83bf9ced8942f325cea6e3f095595eb42ed7fda) |
+
+What the run asserted, and what passed:
+
+```
+3. settle 40000 - UNDER the cap of 100000
+   agent spend decrypts to 40000
+   PASS  under-cap settlement debited the agent
+   treasury now 2880000
+   PASS  under-cap settlement debited the treasury
+
+4. settle 500000 - OVER the cap. Must debit zero and NOT revert.
+   PASS  transaction succeeded despite being over cap
+   agent spend still 40000
+   PASS  over-cap settlement debited ZERO
+   treasury still 2880000
+   PASS  treasury unchanged by the over-cap call
+
+5. inspect what the chain published
+   epoch=0  data=0x
+   PASS  event body is empty - no address, no amount
+
+ALL CHECKS PASSED
+```
+
+**Read the over-cap transaction on Etherscan.** It succeeded. Its receipt is
+indistinguishable from the authorized one above it. Nothing in the logs says
+which of the two was refused — that is the guarantee, demonstrated rather than
+described.
+
+The treasury and spend figures above were decrypted by the owner through the
+Nox handle client. An account without the ACL grant gets `403 not a viewer`.
+
+### A bug this found
+
+The first live run reverted with `PublicHandleACLForbidden()`. `Nox.toEuint256(0)`
+produces a *trivially encrypted* handle, which Nox classifies as public;
+`allow`/`allowThis` silently skip public handles, but `addViewer` reverts on them.
+A newly-registered agent's `spent` is exactly that.
+
+Fixed with an `isPubliclyDecryptable` guard before every `addViewer`. Skipping is
+correct rather than convenient: a public handle is already readable by everyone,
+so there is no viewer left to add. No amount of reading the documentation would
+have surfaced this — only running it did.
 
 ---
 

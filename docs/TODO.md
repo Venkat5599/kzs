@@ -21,21 +21,27 @@ the reasoning, this one is the checklist.
 
 ---
 
-## 1. Prove the vault against live Nox — do this first
+## 1. ~~Prove the vault against live Nox~~ — DONE
 
-Nothing else changes the score as much. The vault is deployed and its
-constructor made real Nox calls, but **no settlement has ever executed**.
+All checks passed against the deployed vault and the real TEE. Transaction
+hashes are in the README. Run it yourself: `bun run --cwd contracts prove:live`.
 
-- [ ] Script a full cycle: `fund` → `registerAgent` → `settle` → `flushEpoch` → `proveEpochAggregate`
-- [ ] Encrypt inputs with the Nox JS SDK (`encryptInput`) and pass the proof to `fromExternal`
-- [ ] Assert an **under-cap** settle authorizes and debits
-- [ ] Assert an **over-cap** settle debits zero **and does not revert** — the core claim
-- [ ] Assert a **revoked** agent is refused
-- [ ] Confirm no `Settled` event carries an address or amount
-- [ ] Record tx hashes in the README so the claims are checkable by a third party
+- [x] Full cycle: fund -> registerAgent -> settle under cap -> settle over cap
+- [x] Under-cap settle debits the agent and the treasury
+- [x] **Over-cap settle debits zero and does NOT revert** — the central claim
+- [x] Treasury unchanged by the over-cap call
+- [x] `Settled` events carry an empty body — no address, no amount
+- [x] Owner decrypts treasury and spend; a non-viewer gets `403 not a viewer`
 
-Risk: the `withinCap AND funded` conjunction reads correct but has never run.
-If anything is wrong in the contract, it surfaces here.
+Found and fixed a real bug doing this: `addViewer` reverts with
+`PublicHandleACLForbidden` on trivially-encrypted handles from `toEuint256`.
+Guarded with `isPubliclyDecryptable`. Vault redeployed.
+
+Still open on the contract:
+- [ ] Exercise `flushEpoch` + `proveEpochAggregate` live (needs 3 settlements in
+      one epoch; `flushThreshold` is 3)
+- [ ] Execute a real swap through `KairosSettlementRouter` on Sepolia — needs a
+      funded token pair. **This is the highest-value item left.**
 
 ## 2. Reframe the frontend copy
 

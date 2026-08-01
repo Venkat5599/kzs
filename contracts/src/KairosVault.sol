@@ -211,8 +211,8 @@ contract KairosVault {
         Nox.allowThis(spent);
         Nox.allow(cap, owner);
         Nox.allow(spent, owner);
-        Nox.addViewer(cap, agent);
-        Nox.addViewer(spent, agent);
+        _addViewerIfPrivate(cap, agent);
+        _addViewerIfPrivate(spent, agent);
 
         _agents[agent] = Agent({capPerCall: cap, spent: spent, registered: true});
 
@@ -314,7 +314,7 @@ contract KairosVault {
         Nox.allow(epoch.total, owner);
         Nox.allowThis(a.spent);
         Nox.allow(a.spent, owner);
-        Nox.addViewer(a.spent, agent);
+        _addViewerIfPrivate(a.spent, agent);
         Nox.allowThis(authorized);
         Nox.allow(authorized, owner);
         Nox.allow(authorized, agent);
@@ -379,6 +379,27 @@ contract KairosVault {
         epoch.settled = true;
 
         emit EpochSettled(epochId, aggregate);
+    }
+
+    /**
+     * @dev Grant `viewer` read access, unless the handle is public.
+     *
+     * `Nox.toEuint256(x)` produces a *trivially encrypted* handle: the value is
+     * derivable from the plaintext, so Nox classifies it as public. `allow` and
+     * `allowThis` silently skip such handles, but `addViewer` reverts on them
+     * with `PublicHandleACLForbidden`.
+     *
+     * A freshly-registered agent's `spent` is exactly that — a trivially
+     * encrypted zero — so registering an agent would revert without this guard.
+     * Skipping is correct rather than merely convenient: a public handle is
+     * already readable by everyone, so there is no viewer left to add.
+     *
+     * Found by running against live Nox on Sepolia, not by reading the docs.
+     */
+    function _addViewerIfPrivate(euint256 handle, address viewer) private {
+        if (!Nox.isPubliclyDecryptable(handle)) {
+            Nox.addViewer(handle, viewer);
+        }
     }
 
     function _openEpoch(uint64 epochId) private {
