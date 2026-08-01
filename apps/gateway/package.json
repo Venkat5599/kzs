@@ -1,0 +1,20 @@
+{
+  "name": "@kairos/gateway",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./src/index.ts",
+  "scripts": {
+    "dev": "bun --watch src/index.ts",
+    "start": "bun src/index.ts",
+    "build": "echo 'runs from source under bun'",
+    "typecheck": "tsc --noEmit",
+    "lint": "echo 'no lint configured'"
+  },
+  "dependencies": {
+    "@kairos/confidential": "workspace:*",
+    "@kairos/shared": "workspace:*",
+    "hono": "^4.6.0",
+    "viem": "^2.55.10"
+  }
+}
