@@ -20,7 +20,7 @@ export const siteConfig = {
   tagline: "A confidentiality layer for public DeFi",
   description:
     "Enforce a spending budget on-chain without publishing the budget, the balance, or a single amount. Caps and settlements stay encrypted inside iExec Nox and are compared in a TEE. The batch then settles through an unmodified Uniswap V3 pool.",
-  url: "https://kairos.dev",
+  url: "https://kairos-nox.vercel.app",
   twitter: "@kairos",
   repo: "https://github.com/Venkat5599/kzs",
   gateway: "https://agentfabric-api.187.127.137.136.sslip.io",

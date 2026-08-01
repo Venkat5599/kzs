@@ -8,6 +8,8 @@
 
 </div>
 
+**[ Live demo ↗ ](https://kairos-nox.vercel.app)** · **[ Dashboard ↗ ](https://kairos-nox.vercel.app/dashboard)** · **[ Mirror ↗ ](https://kairos.187.127.137.136.sslip.io)**
+
 ---
 
 ## Live on Ethereum Sepolia

@@ -4,7 +4,7 @@ Two targets, both live.
 
 | | URL |
 |---|---|
-| Vercel | https://frontend-m4djfjn9u-venkat5599s-projects.vercel.app |
+| Vercel | https://kairos-nox.vercel.app |
 | VPS | https://kairos.187.127.137.136.sslip.io |
 
 ## Vercel
@@ -12,8 +12,14 @@ Two targets, both live.
 Deploy from `apps/frontend` (Root Directory = `apps/frontend`):
 
 ```bash
-cd apps/frontend && bunx vercel --prod
+bun run deploy:vercel
 ```
+
+**The alias does not follow deployments.** A `.vercel.app` alias points at one
+specific deployment, so `vercel --prod` alone publishes to a new hashed URL and
+leaves `kairos-nox.vercel.app` on the previous build. The `deploy:vercel` script
+deploys and then re-points the alias, which is why you should use it rather than
+calling `vercel --prod` directly.
 
 Three things had to be true for this to work, and each was hidden behind the
 previous one:
