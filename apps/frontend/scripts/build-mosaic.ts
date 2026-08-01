@@ -2,7 +2,7 @@
 /**
  * Kairos — the signature artwork.
  *
- *   bun run apps/web/scripts/build-mosaic.ts
+ *   bun run apps/frontend/scripts/build-mosaic.ts
  *
  * Renders `public/fold-mosaic.png`: a dawn horizon composed entirely of
  * tesserae, where the nearest tiles carry hex pairs.

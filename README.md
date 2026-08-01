@@ -75,7 +75,7 @@ low-traffic deployment. The gateway holds keys and is trusted.
 ## Repository layout
 
 ```
-apps/       web · gateway · mcp-server
+apps/       frontend · gateway · mcp-server
 packages/   shared · manifest · authz · chain · confidential · workflow · sdk
 services/   catalog · payments · identity · execution
 contracts/  the confidential vault

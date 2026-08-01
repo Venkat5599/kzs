@@ -14,7 +14,7 @@ pull request that violates the dependency rule in §3 is wrong even if it works.
 ```
 kairos/
 ├── apps/                  Deployable units. Each has an entry point and a lifecycle.
-│   ├── web/               Next.js — marketing site + operator dashboard
+│   ├── frontend/          Next.js — marketing site + operator dashboard
 │   ├── gateway/           HTTP API. The only process that holds keys.
 │   └── mcp-server/        MCP stdio server — skills become agent tools
 │
@@ -131,7 +131,7 @@ apps/gateway/
 ```
 
 ```
-apps/web/
+apps/frontend/
 ├── app/                 Next.js App Router. Route groups in (parentheses).
 │   ├── (marketing)/     Public site
 │   ├── dashboard/       Operator surfaces
@@ -177,8 +177,8 @@ Follow the questions in order; the first "yes" is your answer.
 3. **Does it own persisted state?** → a `services/*` service, behind an interface.
 4. **Is it an HTTP endpoint?** → `apps/gateway/src/routes/`, thin, delegating down.
 5. **Is it an agent-facing tool?** → `apps/mcp-server/`, wrapping the SDK.
-6. **Is it a screen?** → `apps/web/app/`, with its section component in
-   `apps/web/components/`.
+6. **Is it a screen?** → `apps/frontend/app/`, with its section component in
+   `apps/frontend/components/`.
 7. **Is it a type or error more than one package needs?** → `packages/shared`.
 
 If two answers apply, split the feature. A feature that cannot be split usually
@@ -193,7 +193,7 @@ means the tiers were drawn wrong.
 | Unit | `packages/*/test/`, `services/*/test/` | Pure functions, no network |
 | Contract | `contracts/test/` | A local chain |
 | Integration | `apps/gateway/test/` | A booted gateway, mocked vendors |
-| End-to-end | `apps/web/test/e2e/` | A running stack in a real browser |
+| End-to-end | `apps/frontend/test/e2e/` | A running stack in a real browser |
 
 Two paths are **required** to have tests, permanently:
 

@@ -146,7 +146,7 @@ flowchart LR
 | `packages/shared` | Cross-cutting types, errors, result helpers | — |
 | `apps/gateway` | HTTP API — x402, catalog, vault routes, workflow routes. **Sole key holder** | all packages |
 | `apps/mcp-server` | Exposes published skills and workflows as MCP tools over stdio | `packages/sdk` |
-| `apps/web` | Operator dashboard and marketing site | `packages/sdk` |
+| `apps/frontend` | Operator dashboard and marketing site | `packages/sdk` |
 | `services/*` | Persistence, metering, execution, identity, chain writes | `packages/*` |
 | `contracts` | Confidential vault contract, tests, deployment scripts | — |
 

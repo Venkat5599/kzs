@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-/** Monorepo root — keeps standalone output at apps/web/.next/standalone/apps/web */
+/** Monorepo root — keeps standalone output at apps/frontend/.next/standalone/apps/frontend */
 const monorepoRoot = path.join(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const isVercel = !!process.env.VERCEL;
 

@@ -11,7 +11,7 @@
     "services/*"
   ],
   "scripts": {
-    "dev": "bun run --cwd apps/web dev",
+    "dev": "bun run --cwd apps/frontend dev",
     "build": "bun run --filter '*' build",
     "typecheck": "bun run --filter '*' typecheck",
     "lint": "bun run --filter '*' lint",
