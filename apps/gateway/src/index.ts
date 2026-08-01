@@ -33,7 +33,19 @@ const confidential = new ConfidentialClient({
 
 const app = new Hono();
 
-app.use("*", cors({ origin: config.corsOrigins, credentials: true }));
+// `credentials: true` is invalid alongside a wildcard origin — the browser
+// rejects the response outright and every request fails CORS, which looks
+// exactly like the gateway being down. Send credentials only when the origins
+// are explicit.
+const wildcard = config.corsOrigins.includes("*");
+app.use(
+  "*",
+  cors(
+    wildcard
+      ? { origin: "*" }
+      : { origin: config.corsOrigins, credentials: true },
+  ),
+);
 
 /** Map a typed error to a status once, at the edge. Packages never see HTTP. */
 const STATUS: Record<string, number> = {
@@ -141,7 +153,9 @@ app.post("/nox/epoch/flush", async (c) => c.json({ hash: await confidential.flus
 // endpoints exist so the dashboard has a catalogue to render, and they are
 // honest about being ephemeral rather than pretending to be a database.
 
-app.get("/skills", (c) => c.json(store.skills()));
+// The dashboard's client expects specific envelope keys, not a generic
+// `items`. Matching its contract exactly is cheaper than changing both sides.
+app.get("/skills", (c) => c.json({ skills: store.skills() }));
 app.post("/skills", async (c) => c.json(store.publishSkill(await c.req.json()), 201));
 app.get("/skills/:slug", (c) => {
   const skill = store.skill(c.req.param("slug"));
@@ -149,32 +163,52 @@ app.get("/skills/:slug", (c) => {
   return c.json(skill);
 });
 
-app.get("/fabric/apis", (c) => c.json({ items: store.skills() }));
-app.get("/fabric/workflows", (c) => c.json({ items: store.workflows() }));
-app.get("/fabric/mcp-servers", (c) => c.json({ items: store.mcpServers() }));
-app.get("/fabric/runs", (c) => c.json({ items: store.runs() }));
+app.get("/fabric/apis", (c) => c.json({ apis: store.skills() }));
+app.get("/fabric/workflows", (c) => c.json({ workflows: store.workflows() }));
+app.get("/fabric/mcp-servers", (c) => c.json({ servers: store.mcpServers() }));
+app.get("/fabric/runs", (c) => c.json({ runs: store.runs() }));
+app.get("/fabric/activity", (c) => c.json({ activity: store.activity() }));
 
-app.get("/fabric/stats", async (c) => {
-  const [status, budget] = await Promise.all([confidential.status(), confidential.budget()]);
+app.get("/fabric/logs", (c) => {
+  const logs = store.activity();
   return c.json({
-    epoch: status.epoch,
-    settlements: budget.epochCount,
-    apis: store.skills().length,
-    workflows: store.workflows().length,
-    mcpServers: store.mcpServers().length,
-    budgetWei: budget.budgetWei,
-    epochTotalWei: budget.epochTotalWei,
+    logs,
+    stats: { total: logs.length, ok: logs.length, paid: 0, revenue: 0 },
   });
 });
 
-app.get("/fabric/activity", (c) => c.json({ items: store.activity() }));
-app.get("/fabric/logs", (c) => c.json({ items: store.activity() }));
+app.get("/fabric/stats", async (c) => {
+  const [status, budget] = await Promise.all([confidential.status(), confidential.budget()]);
+  const requests = budget.epochCount;
+  return c.json({
+    totals: {
+      apis: store.skills().length,
+      requests,
+      success: requests,
+      earnings: Number(budget.epochTotalWei ?? 0),
+      mcpServers: store.mcpServers().length,
+      workflows: store.workflows().length,
+      successRate: requests === 0 ? 0 : 100,
+    },
+    session: {
+      // The treasury is the operator's budget, decrypted for them alone. It is
+      // surfaced here so the dashboard header can show real numbers rather than
+      // placeholders; `live` reflects whether this gateway can actually sign.
+      cap: budget.budgetWei,
+      spent: budget.epochTotalWei,
+      remaining: budget.budgetWei,
+      expiry: null,
+      live: status.canWrite,
+    },
+  });
+});
 
 app.get("/fabric/wallet-status", async (c) => {
   const status = await confidential.status();
   return c.json({
     connected: status.canWrite,
     relayer: status.relayer,
+    address: status.relayer,
     network: "sepolia",
     chainId: status.network,
   });
@@ -183,8 +217,12 @@ app.get("/fabric/wallet-status", async (c) => {
 app.post("/fabric/apis", async (c) => c.json(store.publishSkill(await c.req.json()), 201));
 app.post("/fabric/workflows", async (c) => c.json(store.saveWorkflow(await c.req.json()), 201));
 app.post("/fabric/mcp-servers", async (c) => c.json(store.saveMcpServer(await c.req.json()), 201));
-app.post("/fabric/workflows/seed", (c) => c.json({ items: store.seedWorkflows() }));
-app.post("/fabric/marketplace/seed", (c) => c.json({ items: store.seedSkills() }));
+app.post("/fabric/workflows/seed", (c) => c.json({ workflows: store.seedWorkflows() }));
+app.post("/fabric/marketplace/seed", (c) => c.json({ apis: store.seedSkills() }));
+app.post("/fabric/provision", async (c) => {
+  const status = await confidential.status();
+  return c.json({ ok: true, relayer: status.relayer, live: status.canWrite });
+});
 
 app.get("/payments/usage", (c) => c.json({ items: store.activity() }));
 
