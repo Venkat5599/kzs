@@ -1,11 +1,42 @@
 {
-  "extends": "../../tsconfig.base.json",
+  "//": [
+    "Deliberately self-contained rather than extending ../../tsconfig.base.json.",
+    "Vercel deploys this app with Root Directory = apps/frontend and uploads only",
+    "that subtree, so a relative `extends` above the root fails to resolve at",
+    "build time. The strict options below are kept in sync with tsconfig.base.json",
+    "by hand — if you change one, change both."
+  ],
   "compilerOptions": {
     "target": "ES2017",
     "lib": ["dom", "dom.iterable", "esnext"],
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "skipLibCheck": true,
+    "noEmit": true,
     "allowJs": true,
     "jsx": "react-jsx",
     "incremental": true,
+
+    "strict": true,
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "strictBindCallApply": true,
+    "strictPropertyInitialization": true,
+    "noImplicitAny": true,
+    "noImplicitReturns": true,
+    "noImplicitOverride": true,
+    "noImplicitThis": true,
+    "noUncheckedIndexedAccess": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "exactOptionalPropertyTypes": true,
+    "useUnknownInCatchVariables": true,
+    "forceConsistentCasingInFileNames": true,
+
     "plugins": [{ "name": "next" }],
     "baseUrl": ".",
     "paths": {
