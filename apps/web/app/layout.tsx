@@ -66,8 +66,16 @@ export default function RootLayout({ children }: { children: ReactNode }): React
   // The font variable goes on <html>, not <body>, so `--font-gambarino` truly
   // resolves at :root — the display stack in globals.css is declared there and
   // would otherwise point at an undefined variable.
+  //
+  // data-scroll-behavior declares the smooth scroll set in globals.css, so Next
+  // stops warning and route transitions still jump rather than glide.
   return (
-    <html lang="en" className={`${gambarino.variable} ${sentient.variable}`} suppressHydrationWarning>
+    <html
+      lang="en"
+      className={`${gambarino.variable} ${sentient.variable}`}
+      data-scroll-behavior="smooth"
+      suppressHydrationWarning
+    >
       {/* suppressHydrationWarning on <body> too: browser extensions commonly
           inject attributes here before React hydrates, which is otherwise
           reported as a mismatch we cannot control. */}

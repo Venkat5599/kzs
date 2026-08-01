@@ -13,7 +13,7 @@ export const siteConfig = {
     "Give an AI agent a budget it cannot exceed, without publishing the budget. Caps, balances and settlement amounts stay encrypted inside iExec Nox and are compared in a TEE. x402 and MCP are left exactly as they are.",
   url: "https://kairos.dev",
   twitter: "@kairos",
-  repo: "https://github.com/Venkat5599/kairos",
+  repo: "https://github.com/Venkat5599/kzs",
   gateway: "https://agentfabric-api.187.127.137.136.sslip.io",
   vault: "0xe417e9e36291a2d74121db0d3ce013854f5123cc",
   vaultExplorer:
@@ -205,7 +205,7 @@ export const footerConfig = {
     {
       heading: "Source",
       links: [
-        { label: "GitHub", href: "https://github.com/Venkat5599/kairos" },
+        { label: "GitHub", href: "https://github.com/Venkat5599/kzs" },
         { label: "Vault contract", href: siteConfig.vaultExplorer },
         { label: "iExec Nox", href: "https://docs.iex.ec/nox-protocol" },
       ],

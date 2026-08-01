@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: typecheck · lint · test · build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install
+        run: bun install --frozen-lockfile
+
+      - name: Typecheck
+        run: bun run typecheck
+
+      - name: Lint
+        run: bun run lint
+
+      - name: Test
+        run: bun test
+
+      - name: Build
+        run: bun run build
+
+  boundaries:
+    name: dependency rule
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # docs/PROJECT_STRUCTURE.md section 3 is normative. A package that reaches
+      # up into an app inverts the dependency graph, so it fails the build here
+      # rather than being found later by someone debugging an import cycle.
+      - name: packages must not import from apps or services
+        run: |
+          if grep -rnE "from ['\"](\.\./)*(apps|services)/" packages/ 2>/dev/null; then
+            echo "::error::A package imports from apps/ or services/. See docs/PROJECT_STRUCTURE.md section 3."
+            exit 1
+          fi
+          echo "ok"
+
+      - name: shared must not import from the workspace
+        run: |
+          if grep -rnE "from ['\"](\.\./)+(apps|services|packages)/" packages/shared/ 2>/dev/null; then
+            echo "::error::packages/shared imports from the workspace. It must depend on nothing."
+            exit 1
+          fi
+          echo "ok"
+
+  secrets:
+    name: secret scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
