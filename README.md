@@ -187,6 +187,50 @@ described.
 The treasury and spend figures above were decrypted by the owner through the
 Nox handle client. An account without the ACL grant gets `403 not a viewer`.
 
+### The batch, declassified — and what the aggregate proves
+
+`bun run --cwd contracts prove:flush` closes an epoch and proves its aggregate
+on-chain.
+
+| Step | Transaction |
+|---|---|
+| `flushEpoch` — `allowPublicDecryption` on the epoch total | [`0x8cfd08a7…866e1a`](https://sepolia.etherscan.io/tx/0x8cfd08a73ed4fd73780f7b66058d0dce301334fef60d809504f72195eb866e1a) |
+| `proveEpochAggregate` — TEE proof verified **on-chain** | [`0x0a906726…762946`](https://sepolia.etherscan.io/tx/0x0a906726e1381b01c77ad43231a274adca57298afa3548aefc5fed2c23762946) |
+
+```
+epoch 0 holds 6 settlement(s)
+
+1. before flushing
+   PASS  aggregate is NOT publicly decryptable yet
+
+2. flushEpoch - the deliberate declassification
+   PASS  epoch marked flushed
+   settlementCount published: 6
+
+3. publicDecrypt - anyone can now read the aggregate
+   aggregate = 120000
+
+4. proveEpochAggregate - the TEE proof verified ON-CHAIN
+   PASS  epoch marked settled
+   PASS  on-chain aggregate matches the off-chain decryption
+
+ALL CHECKS PASSED
+```
+
+**Read that aggregate carefully.** Six settlements produced `120000`, which is
+exactly three lots of `40000` — the three under-cap calls. The three over-cap
+calls contributed **zero**. The batch total independently confirms the
+branchless authorization worked, without any individual amount ever being
+emitted.
+
+The handle was verifiably *not* publicly decryptable before the flush, and was
+after. That is the single declassification point, and it releases a sum rather
+than a payment.
+
+After step 4 the contract holds a plain `uint256`. That is the hinge: an
+unmodified Uniswap router can consume it without knowing Nox exists.
+
+
 ### A bug this found
 
 The first live run reverted with `PublicHandleACLForbidden()`. `Nox.toEuint256(0)`
