@@ -182,7 +182,7 @@ export function NoxVaultSection() {
         {status?.vaultAddress && (
           <div className="mt-4 grid gap-2 text-xs text-neutral-500 sm:grid-cols-2">
             <div className="flex items-center gap-2">
-              <span>vault</span>
+              <span>contract</span>
               <a
                 href={status.explorer}
                 target="_blank"
@@ -194,9 +194,12 @@ export function NoxVaultSection() {
               <CopyBtn text={status.vaultAddress} />
             </div>
             <div className="flex items-center gap-2">
-              <span>relayer</span>
+              <span>sends from</span>
               <span className="font-mono text-neutral-300">{short(status.relayer, 10, 8)}</span>
-              <span className="text-neutral-600">— every settlement shares this sender</span>
+              <span className="text-neutral-600">
+                — every agent pays through this one address, so nobody can tell
+                them apart
+              </span>
             </div>
           </div>
         )}
