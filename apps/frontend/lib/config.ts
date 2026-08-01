@@ -10,8 +10,8 @@
  * the first tenant of the vault, not the product.
  */
 
-const VAULT = "0xa3cca0a1611b7157c4211789eebf96a5234330e0";
-const ROUTER = "0x5e0c9e0cedc2c34eb8147b27d9dd9abb9c5d570b";
+const VAULT = "0x6d0bd38784d794da959b11e5cbeb35764b2579e4";
+const ROUTER = "0x58f97ba8803bf4b19494ff316910298c8b843633";
 const UNISWAP_ROUTER = "0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E";
 const EXPLORER = "https://sepolia.etherscan.io/address";
 

@@ -29,7 +29,7 @@ import { createViemHandleClient } from "@iexec-nox/handle";
 
 const RPC = process.env.CHAIN_RPC_URL ?? "https://ethereum-sepolia-rpc.publicnode.com";
 const VAULT = (process.env.VAULT_ADDRESS ??
-  "0xa3cca0a1611b7157c4211789eebf96a5234330e0") as `0x${string}`;
+  "0x6d0bd38784d794da959b11e5cbeb35764b2579e4") as `0x${string}`;
 
 const KEY = process.env.DEPLOYER_PRIVATE_KEY;
 if (!KEY) throw new Error("DEPLOYER_PRIVATE_KEY is required.");
