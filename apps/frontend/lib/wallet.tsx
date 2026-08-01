@@ -1,7 +1,20 @@
 "use client";
 
 import { createContext, useCallback, useContext, useMemo, type ReactNode } from "react";
-import { RainbowKitProvider, darkTheme, getDefaultConfig, useConnectModal } from "@rainbow-me/rainbowkit";
+import {
+  RainbowKitProvider,
+  darkTheme,
+  getDefaultConfig,
+  connectorsForWallets,
+  useConnectModal,
+} from "@rainbow-me/rainbowkit";
+import {
+  injectedWallet,
+  metaMaskWallet,
+  rainbowWallet,
+  coinbaseWallet,
+} from "@rainbow-me/rainbowkit/wallets";
+import { createConfig, http } from "wagmi";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { WagmiProvider, useAccount, useChainId, useDisconnect, useSwitchChain } from "wagmi";
 import { sepolia } from "wagmi/chains";
@@ -33,15 +46,48 @@ import "@rainbow-me/rainbowkit/styles.css";
  * rest. The placeholder keeps `getDefaultConfig` from throwing at import time,
  * which would take the whole dashboard down.
  */
-const WALLETCONNECT_PROJECT_ID =
-  process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID ?? "kairos_injected_only";
+const WALLETCONNECT_PROJECT_ID = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID;
 
-const wagmiConfig = getDefaultConfig({
-  appName: "Kairos",
-  projectId: WALLETCONNECT_PROJECT_ID,
-  chains: [sepolia],
-  ssr: true, // Next.js App Router renders this on the server first.
-});
+/**
+ * Without a real WalletConnect project id, build an injected-only connector
+ * set rather than falling back to a placeholder.
+ *
+ * `getDefaultConfig` always includes the WalletConnect connectors, and
+ * RainbowKit routes any wallet it has not detected — MetaMask included, when it
+ * does not announce over EIP-6963 — through WalletConnect. With an invalid
+ * project id that request never resolves, so the modal sits on "Opening
+ * MetaMask…" forever with no error. A hang is worse than a missing option: the
+ * user cannot tell whether to keep waiting.
+ *
+ * The injected-only path talks to the extension directly and connects
+ * immediately. Set NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID to get the mobile-QR
+ * path back.
+ */
+const wagmiConfig = WALLETCONNECT_PROJECT_ID
+  ? getDefaultConfig({
+      appName: "Kairos",
+      projectId: WALLETCONNECT_PROJECT_ID,
+      chains: [sepolia],
+      ssr: true, // Next.js App Router renders this on the server first.
+    })
+  : createConfig({
+      chains: [sepolia],
+      transports: { [sepolia.id]: http() },
+      ssr: true,
+      connectors: connectorsForWallets(
+        [
+          {
+            groupName: "Installed",
+            // injectedWallet first: it picks up whichever provider actually
+            // holds window.ethereum, which on a machine with several wallets
+            // is the one that will really open.
+            wallets: [injectedWallet, metaMaskWallet, rainbowWallet, coinbaseWallet],
+          },
+        ],
+        // projectId is required by the type but unused on the injected path.
+        { appName: "Kairos", projectId: "injected-only" },
+      ),
+    });
 
 const queryClient = new QueryClient();
 
