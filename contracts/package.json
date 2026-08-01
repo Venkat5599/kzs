@@ -1,0 +1,28 @@
+{
+  "name": "@kairos/contracts",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Confidential agent-budget vault built on the Nox protocol.",
+  "scripts": {
+    "build": "hardhat build",
+    "test": "hardhat test",
+    "typecheck": "tsc --noEmit",
+    "lint": "prettier --check 'src/**/*.sol'",
+    "deploy:sepolia": "hardhat run script/deploy.ts --network sepolia"
+  },
+  "dependencies": {
+    "@iexec-nox/nox-protocol-contracts": "^0.2.4",
+    "@openzeppelin/contracts": "^5.6.1",
+    "encrypted-types": "^0.0.4"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox-viem": "^5.0.3",
+    "@types/node": "^22",
+    "hardhat": "^3.2.0",
+    "prettier": "^3.8.1",
+    "prettier-plugin-solidity": "^2.3.1",
+    "typescript": "^5",
+    "viem": "^2.47.6"
+  }
+}

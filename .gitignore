@@ -53,3 +53,8 @@ contracts/cache/
 
 # local fabric state snapshot
 .data/
+
+# hardhat 3
+contracts/artifacts/
+contracts/cache/
+contracts/types/

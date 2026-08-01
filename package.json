@@ -8,7 +8,8 @@
   "workspaces": [
     "apps/*",
     "packages/*",
-    "services/*"
+    "services/*",
+    "contracts"
   ],
   "scripts": {
     "dev": "bun run --cwd apps/frontend dev",
