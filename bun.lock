@@ -50,6 +50,10 @@
         "viem": "^2.47.6",
       },
     },
+    "packages/shared": {
+      "name": "@kairos/shared",
+      "version": "0.1.0",
+    },
   },
   "packages": {
     "@actions/core": ["@actions/core@3.0.1", "", { "dependencies": { "@actions/exec": "^3.0.0", "@actions/http-client": "^4.0.0" } }, "sha512-a6d/Nwahm9fliVGRhdhofo40HjHQasUPusmc7vBfyky+7Z+P2A1J68zyFVaNcEclc/Se+eO595oAr5nwEIoIUA=="],
@@ -297,6 +301,8 @@
     "@kairos/contracts": ["@kairos/contracts@workspace:contracts"],
 
     "@kairos/frontend": ["@kairos/frontend@workspace:apps/frontend"],
+
+    "@kairos/shared": ["@kairos/shared@workspace:packages/shared"],
 
     "@napi-rs/wasm-runtime": ["@napi-rs/wasm-runtime@1.2.2", "", { "dependencies": { "@tybys/wasm-util": "^0.10.3" }, "peerDependencies": { "@emnapi/core": "^1.7.1 || ^2.0.0-alpha.3", "@emnapi/runtime": "^1.7.1 || ^2.0.0-alpha.3" } }, "sha512-JfB4kuJQjaoHuCTseIINHtHWeJnvgEcxjwA5t/Y00ZgaOO1Crz3fjT/p8kT28zA/Caz7oiUMn3d6H2yOVCVwuw=="],
 

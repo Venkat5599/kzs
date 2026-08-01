@@ -1,0 +1,15 @@
+{
+  "name": "@kairos/shared",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Types, errors and the fail-closed verdict rule. Depends on nothing.",
+  "main": "./src/index.ts",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": {
+    "build": "echo 'no build step'",
+    "typecheck": "tsc --noEmit",
+    "lint": "echo 'no lint configured'",
+    "test": "bun test"
+  }
+}
