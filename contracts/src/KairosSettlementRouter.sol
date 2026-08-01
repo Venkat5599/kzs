@@ -58,6 +58,7 @@ contract KairosSettlementRouter {
     error NothingToRoute(uint64 epoch);
     error InsufficientBalance(uint256 required, uint256 available);
     error DeadlinePassed();
+    error InvalidRecipient();
 
     // ============ Events ============
 
@@ -116,6 +117,46 @@ contract KairosSettlementRouter {
         uint256 amountOutMinimum,
         uint256 deadline
     ) external onlyOwner returns (uint256 amountOut) {
+        return _route(epochId, tokenIn, tokenOut, poolFee, amountOutMinimum, deadline, owner);
+    }
+
+    /**
+     * @notice Route a batch, paying out to a stealth address.
+     *
+     * @dev The relayer hides the payer: every agent shares one sender, so no
+     *      two agents are distinguishable on-chain. This closes the other half.
+     *
+     *      Paying a fixed address would build a public history — how often this
+     *      operator is paid, how much, and by correlation with whom. A stealth
+     *      address has never appeared on-chain before and cannot be linked to
+     *      the recipient by anyone but the recipient.
+     *
+     *      The address is derived off-chain (packages/shared/stealth.ts) and the
+     *      ephemeral key is published to StealthAnnouncer so the recipient can
+     *      find it. This contract only needs somewhere to send the proceeds.
+     */
+    function routeEpochToStealth(
+        uint64 epochId,
+        address tokenIn,
+        address tokenOut,
+        uint24 poolFee,
+        uint256 amountOutMinimum,
+        uint256 deadline,
+        address stealthRecipient
+    ) external onlyOwner returns (uint256 amountOut) {
+        if (stealthRecipient == address(0)) revert InvalidRecipient();
+        return _route(epochId, tokenIn, tokenOut, poolFee, amountOutMinimum, deadline, stealthRecipient);
+    }
+
+    function _route(
+        uint64 epochId,
+        address tokenIn,
+        address tokenOut,
+        uint24 poolFee,
+        uint256 amountOutMinimum,
+        uint256 deadline,
+        address recipient
+    ) private returns (uint256 amountOut) {
         if (block.timestamp > deadline) revert DeadlinePassed();
         if (routed[epochId]) revert EpochAlreadyRouted(epochId);
 
@@ -139,7 +180,7 @@ contract KairosSettlementRouter {
                 tokenIn: tokenIn,
                 tokenOut: tokenOut,
                 fee: poolFee,
-                recipient: owner,
+                recipient: recipient,
                 amountIn: aggregate,
                 amountOutMinimum: amountOutMinimum,
                 sqrtPriceLimitX96: 0

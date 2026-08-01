@@ -30,7 +30,7 @@ const SWAP_ROUTER = getAddress("0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E");
 
 const VAULT = getAddress(process.env.VAULT_ADDRESS ?? "0x1b5919e3ec31daaa88a69ca4bf27aa83dbed57f8");
 const ROUTER = getAddress(
-  process.env.SETTLEMENT_ROUTER_ADDRESS ?? "0x58baeb4a1a246235df7e84d45ed209daad2017b2",
+  process.env.SETTLEMENT_ROUTER_ADDRESS ?? "0xec0ec50c8ebffb89aed3072d7c4a74671b2e8d7f",
 );
 
 const FEE = 3000;

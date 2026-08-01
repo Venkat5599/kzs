@@ -1,7 +1,15 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { ConfidentialClient } from "@kairos/confidential";
-import { KairosError, mayServeResource, toKairosError } from "@kairos/shared";
+import {
+  KairosError,
+  mayServeResource,
+  toKairosError,
+  generateStealthKeys,
+  parseMetaAddress,
+  deriveStealthAddress,
+  checkStealthPayment,
+} from "@kairos/shared";
 import type { Address } from "viem";
 import { loadConfig } from "./config.js";
 import { store } from "./store.js";
@@ -226,6 +234,76 @@ app.post("/fabric/provision", async (c) => {
 });
 
 app.get("/payments/usage", (c) => c.json({ items: store.activity() }));
+
+// ============ stealth addresses ============
+//
+// The relayer hides the payer — every agent shares one sender. These close the
+// other half: a payout to a fixed address builds a public history of how often
+// and how much this operator is paid. A stealth address has never appeared
+// on-chain and only its recipient can link it to themselves.
+//
+// Private keys are generated and returned to the caller, never stored. The
+// gateway must not be able to spend what it helps derive.
+
+app.post("/stealth/keys", (c) => {
+  const keys = generateStealthKeys();
+  return c.json({
+    metaAddress: keys.metaAddress,
+    spendingPublicKey: keys.spendingPublicKey,
+    viewingPublicKey: keys.viewingPublicKey,
+    // Returned once. Losing them means losing every payment made to this
+    // meta-address, so the client is told to keep them.
+    spendingPrivateKey: keys.spendingPrivateKey,
+    viewingPrivateKey: keys.viewingPrivateKey,
+    warning:
+      "Save both private keys now. They are not stored here and cannot be recovered.",
+  });
+});
+
+app.post("/stealth/derive", async (c) => {
+  const body = await c.req.json<{ metaAddress?: string }>();
+  if (!body.metaAddress) throw new KairosError("invalid_input", "metaAddress is required");
+  let payment;
+  try {
+    payment = deriveStealthAddress(parseMetaAddress(body.metaAddress));
+  } catch (cause) {
+    throw new KairosError("invalid_input", "metaAddress is malformed", {
+      hint: "Expected st:eth:0x… carrying two 33-byte compressed keys.",
+    });
+  }
+  return c.json({
+    stealthAddress: payment.stealthAddress,
+    ephemeralPublicKey: payment.ephemeralPublicKey,
+    viewTag: payment.viewTag,
+    note:
+      "Pay this address. Announce the ephemeral key so the recipient can find it.",
+  });
+});
+
+app.post("/stealth/check", async (c) => {
+  const body = await c.req.json<{
+    viewingPrivateKey?: string;
+    spendingPublicKey?: string;
+    ephemeralPublicKey?: string;
+    stealthAddress?: string;
+    viewTag?: number;
+  }>();
+  if (!body.viewingPrivateKey || !body.spendingPublicKey) {
+    throw new KairosError("invalid_input", "viewingPrivateKey and spendingPublicKey are required");
+  }
+  const mine = checkStealthPayment(
+    {
+      viewingPrivateKey: body.viewingPrivateKey as `0x${string}`,
+      spendingPublicKey: body.spendingPublicKey as `0x${string}`,
+    },
+    {
+      ephemeralPublicKey: (body.ephemeralPublicKey ?? "0x") as `0x${string}`,
+      stealthAddress: (body.stealthAddress ?? "0x") as `0x${string}`,
+      viewTag: body.viewTag ?? 0,
+    },
+  );
+  return c.json({ mine });
+});
 
 // ============ remote MCP connector ============
 //

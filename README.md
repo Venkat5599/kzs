@@ -18,7 +18,7 @@
 |---|---|
 | **KairosRingRegistry** | [`0x00b439e437dabea9d3562f40dacd42be8372fee8`](https://sepolia.etherscan.io/address/0x00b439e437dabea9d3562f40dacd42be8372fee8) |
 | **KairosVault** (ring 0) | [`0x1b5919e3ec31daaa88a69ca4bf27aa83dbed57f8`](https://sepolia.etherscan.io/address/0x1b5919e3ec31daaa88a69ca4bf27aa83dbed57f8) |
-| **KairosSettlementRouter** | [`0x58baeb4a1a246235df7e84d45ed209daad2017b2`](https://sepolia.etherscan.io/address/0x58baeb4a1a246235df7e84d45ed209daad2017b2) |
+| **KairosSettlementRouter** | [`0xec0ec50c8ebffb89aed3072d7c4a74671b2e8d7f`](https://sepolia.etherscan.io/address/0xec0ec50c8ebffb89aed3072d7c4a74671b2e8d7f) |
 | NoxCompute (protocol) | [`0x24Ef36Ec5b626D7DCD09a98F3083c2758F0F77bF`](https://sepolia.etherscan.io/address/0x24Ef36Ec5b626D7DCD09a98F3083c2758F0F77bF) |
 | CompositePolicy | [`0x1de0cde89f528948783776af5737a9510ce9f89a`](https://sepolia.etherscan.io/address/0x1de0cde89f528948783776af5737a9510ce9f89a) |
 | ├ CapPolicy | [`0xa3917c56d009e53c0fb58536f2765fc7ea41f7c6`](https://sepolia.etherscan.io/address/0xa3917c56d009e53c0fb58536f2765fc7ea41f7c6) |
