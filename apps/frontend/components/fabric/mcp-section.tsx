@@ -17,6 +17,106 @@ import {
   type FabricWorkflow,
 } from "@/lib/api";
 
+
+/**
+ * The step that turns this from a dashboard into a demo.
+ *
+ * There is deliberately no "open Claude with this installed" link, because no
+ * such URL exists — MCP servers are added by a command, not a redirect. A
+ * fabricated deep link would fail silently in front of an audience, which is
+ * the worst possible place to find out.
+ */
+function ConnectToClaude() {
+  const { address } = useWallet();
+  const agent = address ?? "0xYOUR_AGENT_ADDRESS";
+  const command = `claude mcp add kairos -e KAIROS_GATEWAY_URL=${gatewayUrl} -e KAIROS_AGENT_ADDRESS=${agent} -- bunx @kairos/mcp-server`;
+
+  const json = JSON.stringify(
+    {
+      mcpServers: {
+        kairos: {
+          command: "bunx",
+          args: ["@kairos/mcp-server"],
+          env: { KAIROS_GATEWAY_URL: gatewayUrl, KAIROS_AGENT_ADDRESS: agent },
+        },
+      },
+    },
+    null,
+    2,
+  );
+
+  const [tab, setTab] = useState<"cli" | "json">("cli");
+
+  return (
+    <Panel className="space-y-5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-semibold text-white">Connect Claude in one command</h2>
+          <p className="mt-1 max-w-xl text-sm text-neutral-400">
+            Paste this into your terminal. Claude can then pay from your budget,
+            and every payment is checked against the limit you set — inside
+            secure hardware, on an amount nobody else can read.
+          </p>
+        </div>
+        <a
+          href="https://claude.ai/code"
+          target="_blank"
+          rel="noreferrer"
+          className="rounded-xl border border-white/[0.12] px-3.5 py-2 text-sm text-neutral-300 transition hover:border-accent/50 hover:text-white"
+        >
+          Open Claude Code ↗
+        </a>
+      </div>
+
+      <div className="flex gap-1 text-xs">
+        {(["cli", "json"] as const).map((t) => (
+          <button
+            key={t}
+            type="button"
+            onClick={() => setTab(t)}
+            className={`rounded-lg px-3 py-1.5 transition ${
+              tab === t ? "bg-white/[0.08] text-white" : "text-neutral-500 hover:text-neutral-300"
+            }`}
+          >
+            {t === "cli" ? "Terminal" : "Config file"}
+          </button>
+        ))}
+      </div>
+
+      <div className="relative">
+        <pre className="overflow-x-auto rounded-xl border border-white/[0.08] bg-black/40 p-4 pr-12 font-mono text-xs leading-relaxed text-neutral-300">
+          {tab === "cli" ? command : json}
+        </pre>
+        <div className="absolute top-3 right-3">
+          <CopyBtn text={tab === "cli" ? command : json} />
+        </div>
+      </div>
+
+      {!address && (
+        <p className="text-xs text-amber-400/80">
+          Connect a wallet first and this command will carry your agent address.
+        </p>
+      )}
+
+      <div className="rounded-xl border border-white/[0.06] bg-white/[0.01] p-4">
+        <p className="text-xs font-semibold tracking-wide text-neutral-400 uppercase">
+          Then just ask
+        </p>
+        <p className="mt-2 font-mono text-sm text-neutral-300">
+          &ldquo;Pay 40000 wei from my Kairos budget&rdquo;
+        </p>
+        <p className="mt-3 text-xs leading-relaxed text-neutral-500">
+          Claude calls <span className="font-mono text-neutral-400">kairos_pay</span>. The
+          amount is encrypted before it reaches the chain and compared against
+          your limit inside the enclave. Over the limit and nothing moves — but
+          the transaction still succeeds, so nobody watching can tell it was
+          refused. Claude is told; the chain is not.
+        </p>
+      </div>
+    </Panel>
+  );
+}
+
 const BUILTIN_TOOLS = ["kairos_chain_status", "kairos_budget", "list_skills", "get_skill", "fabric_reload"];
 
 export function McpSection() {
@@ -45,13 +145,18 @@ export function McpSection() {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-4xl font-semibold tracking-tight text-white">MCP Servers</h1>
-          <p className="mt-1 text-neutral-400">Discover AI-ready MCP servers with tools and workflows for your agents.</p>
+          <h1 className="text-4xl font-semibold tracking-tight text-white">Connect your AI</h1>
+          <p className="mt-1 max-w-xl text-neutral-400">
+            Give Claude the ability to pay from your budget — without giving it
+            your keys, and without letting it see or raise its own limit.
+          </p>
         </div>
         <Button onClick={() => setCreating(true)}>
           <Plus className="h-4 w-4" /> Create MCP Server
         </Button>
       </div>
+
+      <ConnectToClaude />
 
       <div className="relative">
         <Search className="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-neutral-500" />

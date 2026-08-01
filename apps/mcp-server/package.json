@@ -1,0 +1,14 @@
+{
+  "name": "@kairos/mcp-server",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "bin": { "kairos-mcp": "./src/index.ts" },
+  "scripts": {
+    "start": "bun src/index.ts",
+    "build": "echo 'runs from source under bun'",
+    "typecheck": "tsc --noEmit",
+    "lint": "echo 'no lint configured'"
+  },
+  "dependencies": { "@modelcontextprotocol/sdk": "^1.0.0" }
+}
