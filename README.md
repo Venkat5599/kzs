@@ -14,9 +14,14 @@
 
 | | Address |
 |---|---|
-| **KairosVault** | [`0xbe6a1a70885540276203d7211dfba0e7be625344`](https://sepolia.etherscan.io/address/0xbe6a1a70885540276203d7211dfba0e7be625344) |
+| **KairosRingRegistry** | [`0x70d34c99a760be16bb837ddd54590a5269844d6e`](https://sepolia.etherscan.io/address/0x70d34c99a760be16bb837ddd54590a5269844d6e) |
+| **KairosVault** (ring 0) | [`0xbe6a1a70885540276203d7211dfba0e7be625344`](https://sepolia.etherscan.io/address/0xbe6a1a70885540276203d7211dfba0e7be625344) |
 | **KairosSettlementRouter** | [`0xaddf7b8c31fbccfc4a4d71332becd453ca9d2182`](https://sepolia.etherscan.io/address/0xaddf7b8c31fbccfc4a4d71332becd453ca9d2182) |
 | NoxCompute (protocol) | [`0x24Ef36Ec5b626D7DCD09a98F3083c2758F0F77bF`](https://sepolia.etherscan.io/address/0x24Ef36Ec5b626D7DCD09a98F3083c2758F0F77bF) |
+| CompositePolicy | [`0x28837adc41f0c85f014a7ea9122d26c1b2e6f45a`](https://sepolia.etherscan.io/address/0x28837adc41f0c85f014a7ea9122d26c1b2e6f45a) |
+| ├ CapPolicy | [`0x6c262c1e70fa8cb46f3c890dc3dc9a7b8f53307c`](https://sepolia.etherscan.io/address/0x6c262c1e70fa8cb46f3c890dc3dc9a7b8f53307c) |
+| ├ VelocityPolicy | [`0xe3ad56f18b79bb00073940495ce1f42e618752b5`](https://sepolia.etherscan.io/address/0xe3ad56f18b79bb00073940495ce1f42e618752b5) |
+| └ AllowlistPolicy | [`0x0a689588422ad9d45d50c5dd3f374b6413f3480c`](https://sepolia.etherscan.io/address/0x0a689588422ad9d45d50c5dd3f374b6413f3480c) |
 | Uniswap V3 SwapRouter02 | [`0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E`](https://sepolia.etherscan.io/address/0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E) |
 
 Chain `11155111`. The Uniswap router above is **Uniswap's own deployment**. Kairos
@@ -86,6 +91,73 @@ There is no one-transaction-per-call trail to correlate by timing.
 → [ADR-003](./docs/adr/003-epoch-batching.md)
 
 ---
+
+## The policy engine
+
+The vault used to hardcode one rule. Real issuers have several, and they change
+without the settlement logic changing — so the rule is pluggable and the vault
+owns enforcement only.
+
+| Policy | Rule | Kept confidential |
+|---|---|---|
+| `CapPolicy` | per-call ceiling | the ceiling |
+| `VelocityPolicy` | cumulative allowance | allowance and consumption |
+| `AllowlistPolicy` | eligibility / KYC | **the membership set itself** |
+| `CompositePolicy` | all must approve | which one refused |
+
+That third row is the one worth pausing on. A public compliance hook — the
+pattern regulated token standards use — publishes its allowlist. Anyone can
+enumerate who passed KYC and who was rejected. For an issuer that set *is* the
+holder register: commercially sensitive, and in several jurisdictions personal
+data. Here it is an encrypted flag. The vault learns whether to authorize, and
+learns it only as ciphertext.
+
+### Conjunction without boolean operators
+
+Nox exposes no `and`, `or` or `not` on `ebool`. So `CompositePolicy` builds
+conjunction arithmetically:
+
+```solidity
+euint256 acc = one;
+for each policy:
+    ebool term = policy.evaluate(subject, amount, context);
+    acc = Nox.select(term, acc, zero);   // collapses on refusal, never recovers
+approved = Nox.eq(acc, one);
+```
+
+There is deliberately **no early exit**. Short-circuiting on the first refusal
+would make gas a function of *which* policy refused — a side channel handing an
+observer the fact the encryption protects. Every policy runs on every
+settlement, whatever the outcome. That costs more. It is supposed to.
+
+### Rings
+
+`KairosRingRegistry` indexes independent vaults — each with its own relayer,
+policy and encrypted state. ADR-004 documents that a single relayer sees
+everything it relays; a ring bounds that blast radius to one tenant.
+
+The registry deploys and indexes but holds **no authority** over a ring
+afterwards. It cannot pause, drain, or reconfigure one. A registry that could
+would reintroduce, one level up, the central point of trust rings exist to
+remove.
+
+### A replay gap, closed
+
+A settlement handle may now be spent exactly once. Without the nullifier the
+relayer could resubmit a captured `(handle, proof)` pair and debit the same
+authorized amount repeatedly. The handle is public data — it *names* a
+ciphertext, it is not one — so recording it in the clear leaks nothing.
+
+### A privacy bug found and fixed
+
+`revokeAgent` used to flip a `registered` flag, after which `settle` reverted
+with `AgentNotRegistered`. That revert is **public**, so revocation was
+announced on-chain and a revoked agent was distinguishable from one that merely
+exceeded its cap — while the comment above it claimed the opposite.
+
+Revocation now belongs to the policy, where it refuses branchlessly like every
+other rule.
+
 
 ## How Nox is actually used
 
