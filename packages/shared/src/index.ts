@@ -50,3 +50,15 @@ export {
   isAddress,
   isHex,
 } from "./types.js";
+
+export {
+  type StealthKeys,
+  type StealthMetaAddress,
+  type StealthPayment,
+  generateStealthKeys,
+  parseMetaAddress,
+  deriveStealthAddress,
+  checkStealthPayment,
+  computeStealthPrivateKey,
+  randomSalt,
+} from "./stealth.js";

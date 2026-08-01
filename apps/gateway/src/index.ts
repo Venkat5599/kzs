@@ -5,6 +5,7 @@ import { KairosError, mayServeResource, toKairosError } from "@kairos/shared";
 import type { Address } from "viem";
 import { loadConfig } from "./config.js";
 import { store } from "./store.js";
+import { handleMcp } from "./mcp.js";
 
 /**
  * The Kairos gateway.
@@ -225,6 +226,27 @@ app.post("/fabric/provision", async (c) => {
 });
 
 app.get("/payments/usage", (c) => c.json({ items: store.activity() }));
+
+// ============ remote MCP connector ============
+//
+// The URL a user pastes into Claude's connector settings. Same confidential
+// path as every other route — the agent asks to pay, the enclave decides.
+
+app.post("/mcp", async (c) => {
+  const body = await c.req.json();
+  const reply = await handleMcp(confidential, () => ({ apis: store.skills() }), body);
+  // A JSON-RPC notification gets no body, only 202.
+  if (reply === null) return c.body(null, 202);
+  return c.json(reply);
+});
+
+app.get("/mcp", (c) =>
+  c.json({
+    name: "kairos",
+    transport: "streamable-http",
+    hint: "Add this URL as a custom connector in Claude, then ask it to pay from your Kairos budget.",
+  }),
+);
 
 // ============ boot ============
 
