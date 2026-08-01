@@ -7,6 +7,7 @@ import {
     euint256,
     externalEuint256
 } from "@iexec-nox/nox-protocol-contracts/contracts/sdk/Nox.sol";
+import {IConfidentialPolicy} from "./policies/IConfidentialPolicy.sol";
 
 /**
  * @title KairosVault
@@ -64,6 +65,8 @@ contract KairosVault {
     error EpochNotFlushable();
     error EpochAlreadySettled(uint64 epoch);
     error EpochNotFlushed(uint64 epoch);
+    error HandleAlreadyUsed(bytes32 handle);
+    error NoPolicy();
 
     // ============ Events ============
     //
@@ -71,8 +74,8 @@ contract KairosVault {
     // hand back exactly what the encrypted handles withhold. `epoch` is the only
     // field, and it is already public by construction.
 
+    event PolicySet(address indexed policy);
     event AgentRegistered(address indexed agent);
-    event AgentRevoked(address indexed agent);
 
     /// @notice A settlement was processed. Not whether it was authorized.
     event Settled(uint64 indexed epoch);
@@ -86,9 +89,10 @@ contract KairosVault {
     // ============ Types ============
 
     struct Agent {
-        /// @dev Per-call ceiling. Encrypted; never revealed, not even to the agent's counterparties.
-        euint256 capPerCall;
         /// @dev Cumulative authorized spend. Encrypted.
+        ///
+        ///      The per-call cap deliberately does NOT live here. Rules belong
+        ///      to the installed policy; the vault keeps only settlement state.
         euint256 spent;
         bool registered;
     }
@@ -126,6 +130,20 @@ contract KairosVault {
     /// @dev Settlements required before an epoch may be flushed. Longer epochs
     ///      buy timing privacy at the cost of operator latency.
     uint32 public immutable flushThreshold;
+
+    /// @dev The rule every settlement must satisfy. Swappable by the owner, so
+    ///      a ring can change its compliance framework without redeploying the
+    ///      vault or migrating encrypted balances.
+    IConfidentialPolicy public policy;
+
+    /// @dev Nullifier set. A settlement handle may be spent exactly once.
+    ///
+    ///      Without this the relayer could resubmit a captured (handle, proof)
+    ///      pair and debit the same authorized amount repeatedly. The vault
+    ///      cannot detect the replay from the ciphertext — the handle is
+    ///      identical by construction — so it is recorded in the clear. The
+    ///      handle reveals nothing about the value it references.
+    mapping(bytes32 => bool) public handleSpent;
 
     mapping(address => Agent) private _agents;
     mapping(uint64 => Epoch) private _epochs;
@@ -197,50 +215,51 @@ contract KairosVault {
      * @dev The agent becomes a viewer of its own cap and spend — it can see its
      *      own limit without any other party, including other agents, learning it.
      */
-    function registerAgent(
-        address agent,
-        externalEuint256 encryptedCap,
-        bytes calldata proof
-    ) external onlyOwner {
+    /**
+     * @notice Admit an agent to this ring.
+     *
+     * @dev Deliberately takes no cap. Authorization is the policy's job now, so
+     *      a cap stored here would be a second source of truth that nothing
+     *      reads — the kind of dead field someone later mistakes for the
+     *      enforced value. Register the agent's limits with the policy
+     *      (e.g. {CapPolicy.registerSubject}).
+     *
+     *      What the vault still owns is cumulative spend, because that is
+     *      settlement state rather than a rule.
+     */
+    function registerAgent(address agent) external onlyOwner {
         if (_agents[agent].registered) revert AgentAlreadyRegistered(agent);
 
-        euint256 cap = Nox.fromExternal(encryptedCap, proof);
         euint256 spent = Nox.toEuint256(0);
-
-        Nox.allowThis(cap);
         Nox.allowThis(spent);
-        Nox.allow(cap, owner);
         Nox.allow(spent, owner);
-        _addViewerIfPrivate(cap, agent);
         _addViewerIfPrivate(spent, agent);
 
-        _agents[agent] = Agent({capPerCall: cap, spent: spent, registered: true});
+        _agents[agent] = Agent({spent: spent, registered: true});
 
         emit AgentRegistered(agent);
     }
 
     /**
-     * @notice Revoke an agent in a single transaction.
-     * @dev The cap is replaced with an encrypted zero rather than deleted, so
-     *      every subsequent settlement for this agent debits zero through the
-     *      ordinary branchless path. Refusal after revocation is therefore
-     *      indistinguishable from refusal for exceeding a cap.
+     * @notice Revocation lives in the policy, not here — deliberately.
      *
-     *      Historical spend is retained and stays encrypted; revocation is not a
-     *      reason to publish what the agent did.
+     * @dev An earlier version flipped a `registered` flag on this contract, and
+     *      `settle` reverted for a revoked agent. That was a privacy bug: the
+     *      revert is public, so revocation was announced on-chain and a revoked
+     *      agent was distinguishable from one that merely exceeded its cap. The
+     *      comment above it claimed the opposite, which is worse than saying
+     *      nothing.
+     *
+     *      Revocation is now a policy operation — {CapPolicy.removeSubject}, or
+     *      {AllowlistPolicy.setEligible} with false. Both replace the subject's
+     *      encrypted state such that the policy returns an encrypted refusal,
+     *      and the settlement then travels the ordinary branchless path: it
+     *      debits zero, it succeeds, and it is indistinguishable on-chain from
+     *      any other refusal.
+     *
+     *      Registering an agent stays here because cumulative spend is
+     *      settlement state. Deciding whether it may spend is the policy's job.
      */
-    function revokeAgent(address agent) external onlyOwner {
-        Agent storage a = _agents[agent];
-        if (!a.registered) revert AgentNotRegistered(agent);
-
-        euint256 zero = Nox.toEuint256(0);
-        Nox.allowThis(zero);
-        Nox.allow(zero, owner);
-        a.capPerCall = zero;
-        a.registered = false;
-
-        emit AgentRevoked(agent);
-    }
 
     // ============ Settlement ============
 
@@ -268,12 +287,31 @@ contract KairosVault {
         // confidential fact — so this guard leaks nothing and may revert.
         if (!a.registered) revert AgentNotRegistered(agent);
 
+        if (address(policy) == address(0)) revert NoPolicy();
+
+        // The nullifier. A handle is public data — it names a ciphertext, it is
+        // not one — so recording it in the clear leaks nothing, and without it a
+        // captured (handle, proof) pair could be replayed by the relayer to
+        // debit the same authorized amount again.
+        bytes32 rawHandle = externalEuint256.unwrap(encryptedAmount);
+        if (handleSpent[rawHandle]) revert HandleAlreadyUsed(rawHandle);
+        handleSpent[rawHandle] = true;
+
         euint256 amount = Nox.fromExternal(encryptedAmount, proof);
         euint256 zero = Nox.toEuint256(0);
         euint256 one = Nox.toEuint256(1);
 
-        // 1. Is the request within this agent's cap? Encrypted comparison.
-        ebool withinCap = Nox.le(amount, a.capPerCall);
+        // 1. Does this settlement satisfy the installed policy? The rule lives
+        //    outside this contract and is evaluated entirely inside the TEE, so
+        //    the vault learns the verdict only as ciphertext.
+        // The policy is a separate contract, so it holds no ACL grant on this
+        // handle by default and every Nox op it attempts would revert. Grant it
+        // transiently: the policy needs the amount for this transaction and has
+        // no business retaining access to it afterwards.
+        Nox.allowThis(amount);
+        Nox.allowTransient(amount, address(policy));
+
+        ebool withinCap = policy.evaluate(agent, amount, "");
 
         // 2. Reduce an over-cap request to zero. A zero transfer is a no-op that
         //    still succeeds, so the over-cap path stays on the same code path as
@@ -304,6 +342,14 @@ contract KairosVault {
         // 5. Record the spend that actually occurred — zero when refused.
         euint256 debited = Nox.select(authorized, amount, zero);
         a.spent = Nox.add(a.spent, debited);
+
+        // Tell the policy what was actually debited — an encrypted zero when
+        // refused. Stateful policies (velocity, quotas) accumulate here rather
+        // than in evaluate, which also runs for refused settlements. Because the
+        // refused case passes an encrypted zero rather than skipping the call,
+        // the policy performs identical work either way and learns nothing.
+        Nox.allowTransient(debited, address(policy));
+        policy.onSettled(agent, debited);
 
         // 6. Permissions. The verdict is legible to the owner and to the agent it
         //    concerns, and to nobody else. Note the relayer is NOT granted access:
@@ -422,6 +468,24 @@ contract KairosVault {
         relayer = relayer_;
     }
 
+    /**
+     * @notice Install the policy every settlement must satisfy.
+     *
+     * @dev Swappable so a ring can change its compliance framework without
+     *      redeploying or migrating encrypted balances. The policy governs
+     *      authorization only — it can never move funds, and a policy that
+     *      approves everything still cannot spend past the treasury, because
+     *      solvency is enforced separately by `Nox.transfer`.
+     *
+     *      The policy MUST be branchless. A policy that reverts on refusal
+     *      leaks the refusal and breaks the guarantee for the whole vault.
+     *      See IConfidentialPolicy.
+     */
+    function setPolicy(IConfidentialPolicy policy_) external onlyOwner {
+        policy = policy_;
+        emit PolicySet(address(policy_));
+    }
+
     // ============ Views ============
     //
     // These return handles, not values. Reading one tells a caller nothing unless
@@ -433,10 +497,6 @@ contract KairosVault {
 
     function totalSupplyHandle() external view returns (euint256) {
         return _totalSupply;
-    }
-
-    function agentCapHandle(address agent) external view returns (euint256) {
-        return _agents[agent].capPerCall;
     }
 
     function agentSpentHandle(address agent) external view returns (euint256) {

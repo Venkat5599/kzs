@@ -29,7 +29,13 @@ import { createViemHandleClient } from "@iexec-nox/handle";
 
 const RPC = process.env.CHAIN_RPC_URL ?? "https://ethereum-sepolia-rpc.publicnode.com";
 const VAULT = (process.env.VAULT_ADDRESS ??
-  "0x6d0bd38784d794da959b11e5cbeb35764b2579e4") as `0x${string}`;
+  "0x084448ebb9f83c86e0052033e503fb7e1aa20e7b") as `0x${string}`;
+const CAP_POLICY = (process.env.CAP_POLICY_ADDRESS ??
+  "0x560df6fad6a0fb82cfce17b75747163cb7d18679") as `0x${string}`;
+const VELOCITY_POLICY = (process.env.VELOCITY_POLICY_ADDRESS ??
+  "0x467f36b15c1363e9c025f7a53c08158db2e09892") as `0x${string}`;
+const ALLOWLIST_POLICY = (process.env.ALLOWLIST_POLICY_ADDRESS ??
+  "0x65b5f042da8646840fae3d029af487d6b333145c") as `0x${string}`;
 
 const KEY = process.env.DEPLOYER_PRIVATE_KEY;
 if (!KEY) throw new Error("DEPLOYER_PRIVATE_KEY is required.");
@@ -41,16 +47,20 @@ const OVER_CAP = 500_000n;
 
 const vaultAbi = parseAbi([
   "function fund(bytes32 encryptedAmount, bytes proof)",
-  "function registerAgent(address agent, bytes32 encryptedCap, bytes proof)",
+  "function registerAgent(address agent)",
   "function settle(address agent, bytes32 encryptedAmount, bytes proof) returns (bytes32)",
   "function treasuryHandle() view returns (bytes32)",
-  "function agentCapHandle(address agent) view returns (bytes32)",
   "function agentSpentHandle(address agent) view returns (bytes32)",
   "function isRegistered(address agent) view returns (bool)",
   "function currentEpoch() view returns (uint64)",
   "function epochInfo(uint64 epochId) view returns (uint32,bool,bool,uint256)",
   "event Settled(uint64 indexed epoch)",
   "event AgentRegistered(address indexed agent)",
+]);
+
+const policyAbi = parseAbi([
+  "function registerSubject(address subject, bytes32 encryptedCap, bytes proof)",
+  "function setEligible(address subject, bool eligible)",
 ]);
 
 const account = privateKeyToAccount(
@@ -130,15 +140,56 @@ async function main(): Promise<void> {
     console.log(`   tx ${hash}`);
   }
 
-  // ---- 2. Register -------------------------------------------------------
-  console.log("\n2. register an agent with an encrypted cap");
-  if (await publicClient.readContract({ address: VAULT, abi: vaultAbi, functionName: "isRegistered", args: [agent] })) {
-    console.log("   already registered, skipping");
-  } else {
-    const { handle, handleProof } = await handleClient.encryptInput(CAP, "uint256", VAULT);
-    const hash = await send("registerAgent", [agent, handle, handleProof]);
-    results.push({ step: "registerAgent", hash, note: `encrypted cap ${CAP}` });
-    console.log(`   tx ${hash}`);
+  // ---- 2. Register ------------------------------------------------------
+  //
+  // Registration is now split. The vault admits the agent and tracks its
+  // cumulative spend; the RULES live in the policy stack. That separation is
+  // the point of the refactor: swapping a compliance framework must not mean
+  // migrating encrypted balances.
+  console.log("\n2. admit the agent, then register it with each policy");
+  {
+    const hash = await send("registerAgent", [agent]);
+    results.push({ step: "registerAgent", hash, note: "vault admits the agent" });
+    console.log(`   vault      tx ${hash}`);
+  }
+
+  const writePolicy = async (
+    address: `0x${string}`,
+    fn: string,
+    args: readonly unknown[],
+  ): Promise<`0x${string}`> => {
+    const hash = await walletClient.writeContract({
+      address,
+      abi: policyAbi,
+      functionName: fn as never,
+      args: args as never,
+    });
+    const receipt = await publicClient.waitForTransactionReceipt({ hash });
+    if (receipt.status !== "success") throw new Error(`${fn} reverted (${hash})`);
+    return hash;
+  };
+
+  {
+    const { handle, handleProof } = await handleClient.encryptInput(CAP, "uint256", CAP_POLICY);
+    const hash = await writePolicy(CAP_POLICY, "registerSubject", [agent, handle, handleProof]);
+    results.push({ step: "CapPolicy", hash, note: `encrypted per-call cap ${CAP}` });
+    console.log(`   cap        tx ${hash}`);
+  }
+  {
+    const allowance = CAP * 10n;
+    const { handle, handleProof } = await handleClient.encryptInput(
+      allowance,
+      "uint256",
+      VELOCITY_POLICY,
+    );
+    const hash = await writePolicy(VELOCITY_POLICY, "registerSubject", [agent, handle, handleProof]);
+    results.push({ step: "VelocityPolicy", hash, note: `encrypted total allowance ${allowance}` });
+    console.log(`   velocity   tx ${hash}`);
+  }
+  {
+    const hash = await writePolicy(ALLOWLIST_POLICY, "setEligible", [agent, true]);
+    results.push({ step: "AllowlistPolicy", hash, note: "eligible" });
+    console.log(`   allowlist  tx ${hash}`);
   }
 
   const treasuryBefore = await decryptWithRetry(

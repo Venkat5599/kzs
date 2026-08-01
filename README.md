@@ -14,8 +14,8 @@
 
 | | Address |
 |---|---|
-| **KairosVault** | [`0x6d0bd38784d794da959b11e5cbeb35764b2579e4`](https://sepolia.etherscan.io/address/0x6d0bd38784d794da959b11e5cbeb35764b2579e4) |
-| **KairosSettlementRouter** | [`0x58f97ba8803bf4b19494ff316910298c8b843633`](https://sepolia.etherscan.io/address/0x58f97ba8803bf4b19494ff316910298c8b843633) |
+| **KairosVault** | [`0xbe6a1a70885540276203d7211dfba0e7be625344`](https://sepolia.etherscan.io/address/0xbe6a1a70885540276203d7211dfba0e7be625344) |
+| **KairosSettlementRouter** | [`0xaddf7b8c31fbccfc4a4d71332becd453ca9d2182`](https://sepolia.etherscan.io/address/0xaddf7b8c31fbccfc4a4d71332becd453ca9d2182) |
 | NoxCompute (protocol) | [`0x24Ef36Ec5b626D7DCD09a98F3083c2758F0F77bF`](https://sepolia.etherscan.io/address/0x24Ef36Ec5b626D7DCD09a98F3083c2758F0F77bF) |
 | Uniswap V3 SwapRouter02 | [`0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E`](https://sepolia.etherscan.io/address/0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E) |
 
