@@ -221,7 +221,7 @@ function TestApi({ api }: { api: FabricApi }) {
       <p className="mt-2 text-sm text-neutral-500">
         Proxies to {api.target_url} with your args. Variables substitute {"{name}"} in the URL / query.
       </p>
-      <Field label="Args (JSON)">
+      <Field label="Settings to send" hint="Leave as {} if the service needs nothing extra.">
         <Textarea rows={4} value={argsText} onChange={(e) => setArgsText(e.target.value)} className="font-mono" />
       </Field>
       <div className="mt-3">
@@ -303,16 +303,16 @@ function CreateApiForm({ onDone, onCancel }: { onDone: () => void; onCancel: () 
         </div>
 
         <div className="space-y-5">
-          <Field label="API Name">
-            <Input value={f.name} onChange={(e) => set("name")(e.target.value)} placeholder="My Awesome API" />
+          <Field label="Name it" hint="What people will see in the marketplace.">
+            <Input value={f.name} onChange={(e) => set("name")(e.target.value)} placeholder="Weather lookup" />
           </Field>
-          <Field label="Custom URL Slug" hint="(optional)">
-            <Input value={f.slug} onChange={(e) => set("slug")(e.target.value)} placeholder="my-awesome-api" />
+          <Field label="Short web name" hint="Optional. Used in the link, like kairos.app/s/weather-lookup. Leave blank and we make one from the name.">
+            <Input value={f.slug} onChange={(e) => set("slug")(e.target.value)} placeholder="weather-lookup" />
           </Field>
-          <Field label="Description" hint="(optional)">
-            <Textarea rows={3} value={f.description} onChange={(e) => set("description")(e.target.value)} placeholder="Describe what your API does…" />
+          <Field label="What does it do?" hint="Optional, but it is what convinces someone to use it.">
+            <Textarea rows={3} value={f.description} onChange={(e) => set("description")(e.target.value)} placeholder="Returns the current temperature for any city." />
           </Field>
-          <Field label="Category" hint="Choose a category to help users discover your API">
+          <Field label="Category" hint="Helps people find it.">
             <select
               value={f.category}
               onChange={(e) => set("category")(e.target.value)}
@@ -326,17 +326,17 @@ function CreateApiForm({ onDone, onCancel }: { onDone: () => void; onCancel: () 
               ))}
             </select>
           </Field>
-          <Field label="Tags" hint="Add tags to help users find your API (max 10)">
-            <Input value={f.tags} onChange={(e) => set("tags")(e.target.value)} placeholder="Sepolia, x402, agents" />
+          <Field label="Tags" hint="Words people might search for. Separate with commas, up to 10.">
+            <Input value={f.tags} onChange={(e) => set("tags")(e.target.value)} placeholder="weather, forecast, cities" />
           </Field>
-          <Field label="Payment Address" hint="Ethereum address (0x…) that receives payments">
-            <Input value={f.payment_address} onChange={(e) => set("payment_address")(e.target.value)} className="font-mono" placeholder="01…" />
+          <Field label="Where you get paid" hint="Your wallet address — the long code starting 0x. Every payment lands here.">
+            <Input value={f.payment_address} onChange={(e) => set("payment_address")(e.target.value)} className="font-mono" placeholder="0x1234…" />
           </Field>
-          <Field label="Target API URL" hint="the endpoint called after payment">
+          <Field label="What we call when someone pays" hint="The web address of the service you are reselling. We only call it after payment clears.">
             <Input value={f.target_url} onChange={(e) => set("target_url")(e.target.value)} placeholder="https://api.example.com/v1/endpoint" />
           </Field>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="HTTP Method">
+            <Field label="Request type" hint="GET reads data. POST sends data. If unsure, GET.">
               <select
                 value={f.http_method}
                 onChange={(e) => set("http_method")(e.target.value)}
@@ -349,12 +349,12 @@ function CreateApiForm({ onDone, onCancel }: { onDone: () => void; onCancel: () 
                 ))}
               </select>
             </Field>
-            <Field label="Content Type">
+            <Field label="Data format" hint="JSON is right for almost everything.">
               <Input value={f.content_type} onChange={(e) => set("content_type")(e.target.value)} />
             </Field>
           </div>
-          <Field label="Query Parameters Template" hint="(optional) use {name}">
-            <Textarea rows={2} value={f.query_params} onChange={(e) => set("query_params")(e.target.value)} placeholder="param1={name1}&param2={name2}" />
+          <Field label="Extra settings to pass along" hint="Optional. Put {curly braces} where a caller fills in a value — for example city={city}.">
+            <Textarea rows={2} value={f.query_params} onChange={(e) => set("query_params")(e.target.value)} placeholder="city={city}&units=metric" />
           </Field>
 
           <div className="rounded-xl border border-white/[0.08] p-4">
@@ -424,13 +424,13 @@ function CreateApiForm({ onDone, onCancel }: { onDone: () => void; onCancel: () 
             ))}
           </div>
 
-          <Field label="Example Response" hint="(optional)">
+          <Field label="Example of what comes back" hint="Optional. Paste a sample so buyers know what they are getting.">
             <Textarea rows={4} value={f.example_response} onChange={(e) => set("example_response")(e.target.value)} />
           </Field>
-          <Field label="Price per Request (ETH wei)" hint="charged per API call">
+          <Field label="Price per use" hint="In wei, the smallest unit of ETH. 1000 is a fraction of a cent — fine for testing.">
             <Input type="number" step="1" value={f.price} onChange={(e) => set("price")(e.target.value)} />
           </Field>
-          <Toggle on={f.is_public} onChange={(v) => setF((s) => ({ ...s, is_public: v }))} label="Make API Public" desc="List this API in the public marketplace" />
+          <Toggle on={f.is_public} onChange={(v) => setF((s) => ({ ...s, is_public: v }))} label="Show in the marketplace" desc="Anyone can find and pay for it. Turn off to keep it private to you." />
 
           {err && <p className="text-sm text-red-400">{err}</p>}
           <div className="flex gap-3 pt-2">

@@ -168,13 +168,14 @@ export function NoxVaultSection() {
           <div>
             <h2 className="text-lg font-semibold text-white">Confidential vault</h2>
             <p className="mt-1 max-w-xl text-sm text-neutral-400">
-              Budgets, per-agent caps and settlement amounts are encrypted with iExec Nox. The chain
-              stores handles, never values.
+              Give an AI agent a spending limit it cannot go over — and that
+              nobody else can read. Balances, limits and every payment amount
+              stay scrambled on the blockchain.
             </p>
           </div>
           <div className="flex items-center gap-2">
             <Chip accent>Sepolia</Chip>
-            {status?.epoch != null && <Chip>epoch {status.epoch}</Chip>}
+            {status?.epoch != null && <Chip>batch {status.epoch}</Chip>}
           </div>
         </div>
 
@@ -203,25 +204,25 @@ export function NoxVaultSection() {
 
       <div className="grid gap-4 sm:grid-cols-3">
         <Encrypted
-          label="Treasury budget"
+          label="Money available"
           pending={budget == null}
           value={wei(budget?.budgetWei)}
-          note="encrypted on-chain · decrypted for the owner"
+          note="Only you can read this. Everyone else sees scrambled data."
         />
         <Encrypted
-          label="Current epoch total"
+          label="Spent in this batch"
           pending={budget == null}
           value={wei(budget?.epochTotalWei)}
-          note={`${budget?.epochCount ?? 0} settlements batched`}
+          note={`${budget?.epochCount ?? 0} payment${budget?.epochCount === 1 ? "" : "s"} grouped together so far`}
         />
         <Encrypted
-          label="Agent spend"
+          label="This agent has spent"
           pending={agent == null && status?.configured === true}
           value={wei(agent?.spentWei)}
           note={
             agent?.capWei
-              ? `cap ${formatAmount(agent.capWei)} per call`
-              : "no agent registered"
+              ? `Its limit is ${formatAmount(agent.capWei)} per payment`
+              : "Add an agent below to give it a spending limit"
           }
         />
       </div>
@@ -234,9 +235,17 @@ export function NoxVaultSection() {
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Panel className="space-y-4">
-          <h3 className="text-sm font-semibold text-white">Owner</h3>
+          <div>
+            <h3 className="text-sm font-semibold text-white">You (the owner)</h3>
+            <p className="mt-1 text-xs leading-relaxed text-neutral-500">
+              Put money in, decide what each agent may spend, and publish batches.
+            </p>
+          </div>
 
-          <Field label="Fund budget" hint="wei, encrypted before it leaves the browser">
+          <Field
+            label="Add money"
+            hint="The amount is scrambled in your browser before it is sent. Nobody — not even the blockchain — sees the number."
+          >
             <div className="flex gap-2">
               <Input value={fundAmt} onChange={(e) => setFundAmt(e.target.value)} inputMode="numeric" />
               <Button
@@ -253,7 +262,10 @@ export function NoxVaultSection() {
             </div>
           </Field>
 
-          <Field label="Register agent" hint="address + encrypted per-call cap">
+          <Field
+            label="Give an agent a spending limit"
+            hint="Paste the agent's wallet address, then set the most it may spend on any single payment. The limit stays private."
+          >
             <div className="space-y-2">
               <Input
                 value={agentAddr}
@@ -278,7 +290,10 @@ export function NoxVaultSection() {
             </div>
           </Field>
 
-          <Field label="Close epoch" hint="one aggregate event for the whole batch">
+          <Field
+            label="Publish this batch"
+            hint="Releases one combined total for every payment in the batch. The individual payments stay hidden — nobody can work out who paid what."
+          >
             <Button
               variant="outline"
               disabled={busy !== null}
@@ -289,19 +304,28 @@ export function NoxVaultSection() {
                 })
               }
             >
-              {busy === "flush" ? <Loader2 className="h-4 w-4 animate-spin" /> : "Flush epoch"}
+              {busy === "flush" ? <Loader2 className="h-4 w-4 animate-spin" /> : "Publish batch"}
             </Button>
           </Field>
         </Panel>
 
         <Panel className="space-y-4">
-          <h3 className="text-sm font-semibold text-white">Agent settlement</h3>
+          <div>
+            <h3 className="text-sm font-semibold text-white">Make a payment</h3>
+            <p className="mt-1 text-xs leading-relaxed text-neutral-500">
+              Try an amount over the limit. It will be refused — and from the
+              outside nobody can tell it was refused.
+            </p>
+          </div>
 
-          <Field label="Recipient">
+          <Field label="Which agent is paying" hint="Its wallet address.">
             <Input value={recipient} onChange={(e) => setRecipient(e.target.value)} className="font-mono" />
           </Field>
 
-          <Field label="Amount" hint="encrypted; compared against the cap inside the TEE">
+          <Field
+            label="How much"
+            hint="Checked against this agent's limit inside secure hardware. Over the limit and nothing moves, but the transaction still succeeds — so an onlooker cannot tell."
+          >
             <div className="flex gap-2">
               <Input value={settleAmt} onChange={(e) => setSettleAmt(e.target.value)} inputMode="numeric" />
               <Button
@@ -418,25 +442,25 @@ export function NoxVaultSection() {
           <div className="rounded-xl border border-amber-500/30 bg-amber-500/[0.06] px-4 py-3 text-sm text-amber-300">
             This Safe has not enabled the module yet. Run{" "}
             <span className="font-mono">enableModule({status?.vaultAddress ?? "vault"})</span> from
-            the Safe before executing a batch.
+            the Safe before sending a batch out.
           </div>
         )}
 
         <Field
-          label="Execute closed batch"
-          hint="many private settlements leave as one public transfer"
+          label="Send the batch out"
+          hint="Many private payments leave as a single public transfer, so no one payment can be picked out of it."
         >
           {closed?.closed ? (
             <div className="space-y-2">
               <div className="text-sm text-neutral-400">
-                Epoch {closed.epoch} aggregate:{" "}
+                Batch {closed.epoch} total:{" "}
                 <span className="font-mono text-white">{wei(closed.totalWei)}</span>
                 <div className="mt-0.5 text-[11px] text-neutral-600">
                   {closed.count
-                    ? `publicly decryptable — one number covering ${closed.count} settlement${
+                    ? `Anyone can read this one number. It covers ${closed.count} payment${
                         closed.count === 1 ? "" : "s"
-                      }, decomposing into none of them`
-                    : "this epoch absorbed no settlements"}
+                      }, and cannot be split back into them.`
+                    : "No payments went into this batch."}
                 </div>
               </div>
               <div className="flex gap-2">
@@ -465,30 +489,33 @@ export function NoxVaultSection() {
             </div>
           ) : (
             <div className="text-sm text-neutral-500">
-              No closed epoch yet. Flush the current epoch to release an aggregate.
+              No batch published yet. Use “Publish this batch” above to release
+              one combined total.
             </div>
           )}
         </Field>
       </Panel>
 
       <Panel>
-        <h3 className="text-sm font-semibold text-white">What an observer sees</h3>
+        <h3 className="text-sm font-semibold text-white">
+          What a stranger can see, and what they cannot
+        </h3>
         <div className="mt-3 grid gap-4 text-sm sm:grid-cols-2">
           <div>
             <div className="text-xs uppercase tracking-wide text-neutral-500">Public</div>
             <ul className="mt-2 space-y-1 text-neutral-400">
-              <li>a settlement occurred in some epoch</li>
-              <li>how many settlements a batch contained</li>
-              <li>the relayer address, shared by every agent</li>
+              <li>That a payment happened, and in which batch</li>
+              <li>How many payments a batch contained</li>
+              <li>One sending address, shared by every agent</li>
             </ul>
           </div>
           <div>
             <div className="text-xs uppercase tracking-wide text-accent">Private</div>
             <ul className="mt-2 space-y-1 text-neutral-400">
-              <li>the treasury budget and what remains</li>
-              <li>each agent&apos;s cap and cumulative spend</li>
-              <li>the amount of any individual payment</li>
-              <li>whether a given settlement was authorized</li>
+              <li>How much money you have, and how much is left</li>
+              <li>Each agent&apos;s limit and what it has spent</li>
+              <li>The amount of any single payment</li>
+              <li>Whether a payment was allowed or refused</li>
             </ul>
           </div>
         </div>
