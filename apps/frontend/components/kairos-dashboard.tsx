@@ -13,6 +13,7 @@ import {
   Wallet,
   KeyRound,
   Lock,
+  EyeOff,
   type LucideIcon, BarChart3 } from "lucide-react";
 import { KairosMark } from "@/components/kairos-logo";
 import { siteConfig } from "@/lib/config";
@@ -24,6 +25,7 @@ import { MarketplaceSection } from "@/components/fabric/marketplace-section";
 import { AnalyticsSection } from "@/components/fabric/analytics-section";
 import { SessionKeysSection } from "@/components/fabric/session-keys-section";
 import { NoxVaultSection } from "@/components/fabric/nox-vault-section";
+import { StealthSection } from "@/components/fabric/stealth-section";
 import { useWallet } from "@/lib/wallet";
 import { getChainStatus } from "@/lib/api";
 
@@ -35,11 +37,13 @@ export type SectionKey =
   | "workflows"
   | "analytics"
   | "marketplace"
-  | "session-keys";
+  | "session-keys"
+  | "stealth";
 
 const SECTIONS: { key: SectionKey; label: string; icon: LucideIcon }[] = [
   { key: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { key: "vault", label: "Confidential vault", icon: Lock },
+  { key: "stealth", label: "Stealth payments", icon: EyeOff },
   { key: "apis", label: "APIs", icon: Store },
   { key: "mcp", label: "MCP Servers", icon: Server },
   { key: "workflows", label: "Workflows", icon: Workflow },
@@ -158,6 +162,7 @@ export function KairosDashboard({ initialTab }: { initialTab?: SectionKey }): Re
             >
               {active === "dashboard" && <DashboardHome go={(k) => setActive(k)} />}
               {active === "vault" && <NoxVaultSection />}
+              {active === "stealth" && <StealthSection />}
               {active === "apis" && <ApisSection />}
               {active === "mcp" && <McpSection />}
               {active === "workflows" && <WorkflowsSection />}

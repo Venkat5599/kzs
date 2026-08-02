@@ -14,6 +14,7 @@ const TAB_ALIASES: Record<string, SectionKey> = {
   analytics: "analytics",
   marketplace: "marketplace",
   "session-keys": "session-keys",
+  stealth: "stealth",
   create: "apis",
 };
 

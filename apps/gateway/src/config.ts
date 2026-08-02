@@ -1,4 +1,4 @@
-import { misconfigured } from "@kairos/shared";
+import { misconfigured, parseMetaAddress } from "@kairos/shared";
 import { isAddress, type Address, type Hex } from "viem";
 
 /**
@@ -15,6 +15,18 @@ export interface GatewayConfig {
   vaultAddress: Address;
   capPolicyAddress?: Address;
   relayerPrivateKey?: Hex;
+  /** ERC-5564 bulletin board. Without it a stealth payment cannot be found. */
+  stealthAnnouncerAddress?: Address;
+  /** Where a proven epoch aggregate is swapped and paid out. */
+  settlementRouterAddress?: Address;
+  /**
+   * The operator's stealth meta-address, `st:eth:0x…`.
+   *
+   * Set once and every payment made through MCP lands on a fresh one-time
+   * address. Left unset, payouts behave as before — that is a legitimate
+   * deployment, not a degraded one, so it is optional rather than required.
+   */
+  payeeStealthMetaAddress?: string;
 }
 
 function address(name: string, value: string | undefined, required: boolean): Address | undefined {
@@ -41,6 +53,23 @@ export function loadConfig(): GatewayConfig {
     throw misconfigured("RELAYER_PRIVATE_KEY is not a 32-byte hex key.");
   }
 
+  const announcer = address("STEALTH_ANNOUNCER_ADDRESS", process.env.STEALTH_ANNOUNCER_ADDRESS, false);
+  const router = address("SETTLEMENT_ROUTER_ADDRESS", process.env.SETTLEMENT_ROUTER_ADDRESS, false);
+
+  // Parsed at boot rather than per request. A malformed meta-address discovered
+  // mid-payment would leave the operator believing payouts were private while
+  // they were landing somewhere ordinary — so it is a startup failure instead.
+  const payee = process.env.PAYEE_STEALTH_META_ADDRESS?.trim();
+  if (payee) {
+    try {
+      parseMetaAddress(payee);
+    } catch {
+      throw misconfigured("PAYEE_STEALTH_META_ADDRESS is malformed.", {
+        hint: "Expected st:eth:0x… carrying two 33-byte compressed keys.",
+      });
+    }
+  }
+
   return {
     port,
     corsOrigins: (process.env.GATEWAY_CORS_ORIGINS ?? "*").split(",").map((s) => s.trim()),
@@ -48,5 +77,8 @@ export function loadConfig(): GatewayConfig {
     vaultAddress: vault,
     ...(capPolicy ? { capPolicyAddress: capPolicy } : {}),
     ...(key ? { relayerPrivateKey: key as Hex } : {}),
+    ...(announcer ? { stealthAnnouncerAddress: announcer } : {}),
+    ...(router ? { settlementRouterAddress: router } : {}),
+    ...(payee ? { payeeStealthMetaAddress: payee } : {}),
   };
 }

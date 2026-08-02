@@ -383,11 +383,33 @@ settlement was authorized or refused**
 a flushed batch contained · the relayer address · the epoch aggregate, once
 deliberately released
 
+**The payee, hidden too.** The relayer hides the payer; a fixed payout address
+would still accumulate a public history of how often this recipient is paid and
+how much. So payouts land on ERC-5564 stealth addresses. Set
+`PAYEE_STEALTH_META_ADDRESS` and every payment — including every payment an agent
+makes through MCP — derives a fresh address that has never appeared on-chain.
+
+This happens in two moments, and the distinction is load-bearing. **Settling**
+debits the encrypted budget and publishes the sender's ephemeral key to
+[`StealthAnnouncer`](https://sepolia.etherscan.io/address/0x07ef4c4c82a093c6eef1b44fd3750695a80b48f1),
+which is what makes the payment findable; **routing** the epoch is what moves the
+money to it, through `routeEpochToStealth`. The payout is per-epoch rather than
+per-call because a transfer on every payment would republish precisely the timing
+the batch exists to hide. Announcement happens only on an authorized settlement —
+publishing a refusal would write a false entry to a public log and betray that an
+attempt was made at all.
+
+Connected over MCP, an agent gets `kairos_stealth_keys` to generate a meta-address
+and `kairos_stealth_check` to identify its own payments. It cannot trigger a
+payout: an agent able to drain the router on demand would have a blast radius
+larger than the cap it was given.
+
 **Limitations, stated as prominently as the guarantees.** `msg.sender` is
 inherently public: all settlements share one gateway relayer, so per-caller
 activity is not distinguishable — but the relayer is visible and learns what it
 relays. Batching mitigates but does not eliminate timing correlation on a
-low-traffic deployment. The gateway holds keys and is trusted.
+low-traffic deployment. The gateway holds keys and is trusted. A stealth address
+hides the link, not the amount — the amount is hidden separately, by Nox.
 
 ---
 

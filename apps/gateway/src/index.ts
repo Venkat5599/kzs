@@ -14,6 +14,7 @@ import type { Address } from "viem";
 import { loadConfig } from "./config.js";
 import { store } from "./store.js";
 import { handleMcp } from "./mcp.js";
+import { announceStealthPayout, resolveStealthPayout } from "./stealth.js";
 
 /**
  * The Kairos gateway.
@@ -38,6 +39,12 @@ const confidential = new ConfidentialClient({
   vaultAddress: config.vaultAddress,
   ...(config.capPolicyAddress ? { capPolicyAddress: config.capPolicyAddress } : {}),
   ...(config.relayerPrivateKey ? { relayerPrivateKey: config.relayerPrivateKey } : {}),
+  ...(config.stealthAnnouncerAddress
+    ? { stealthAnnouncerAddress: config.stealthAnnouncerAddress }
+    : {}),
+  ...(config.settlementRouterAddress
+    ? { settlementRouterAddress: config.settlementRouterAddress }
+    : {}),
 });
 
 const app = new Hono();
@@ -130,12 +137,22 @@ app.post("/nox/agents", async (c) => {
  * verdict could not be read. Those are different facts internally — the second
  * is an operational alarm — but they are the same answer to the caller, and
  * distinguishing them here would leak the outcome to whoever asked.
+ *
+ * `payTo` closes the payee half. Given a stealth meta-address — or with one
+ * configured for the operator — the payout lands on an address that has never
+ * appeared on-chain, and the announcement that makes it findable is published
+ * only after the payment is authorized. Announcing a refusal would write a false
+ * entry to a public log and betray that an attempt happened at all.
  */
 app.post("/nox/settle", async (c) => {
-  const body = await c.req.json<{ agent?: string; amountWei?: string }>();
+  const body = await c.req.json<{ agent?: string; amountWei?: string; payTo?: string }>();
   if (!body.agent) throw new KairosError("invalid_input", "agent is required");
   const amount = BigInt(body.amountWei ?? "0");
   if (amount <= 0n) throw new KairosError("invalid_input", "amountWei must be positive");
+
+  // Derived before settling so a malformed meta-address is a 400 rather than a
+  // successful payment nobody can collect.
+  const payout = resolveStealthPayout(config, body.payTo);
 
   const { hash, verdict, spentWei } = await confidential.settle(body.agent as Address, amount);
 
@@ -145,13 +162,17 @@ app.post("/nox/settle", async (c) => {
       // visible in logs even though the caller is told nothing extra.
       console.warn(`[fail-closed] refused ${hash}: ${verdict.reason}`);
     }
+    // No `stealth` key here, deliberately: a refusal and an authorization must
+    // not be distinguishable by the shape of the response.
     return c.json(
       { authorized: false, hash, reason: "budget or cap exceeded", spentWei },
       402,
     );
   }
 
-  return c.json({ authorized: true, hash, spentWei });
+  const stealth = payout ? await announceStealthPayout(confidential, payout) : null;
+
+  return c.json({ authorized: true, hash, spentWei, ...(stealth ? { stealth } : {}) });
 });
 
 app.post("/nox/epoch/flush", async (c) => c.json({ hash: await confidential.flushEpoch() }));
@@ -312,7 +333,7 @@ app.post("/stealth/check", async (c) => {
 
 app.post("/mcp", async (c) => {
   const body = await c.req.json();
-  const reply = await handleMcp(confidential, () => ({ apis: store.skills() }), body);
+  const reply = await handleMcp(confidential, config, () => ({ apis: store.skills() }), body);
   // A JSON-RPC notification gets no body, only 202.
   if (reply === null) return c.body(null, 202);
   return c.json(reply);

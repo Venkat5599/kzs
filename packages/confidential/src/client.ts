@@ -53,10 +53,29 @@ export const capPolicyAbi = parseAbi([
   "function isRegistered(address subject) view returns (bool)",
 ]);
 
+export const stealthAnnouncerAbi = parseAbi([
+  "function registerKeys(uint256 schemeId, bytes metaAddress)",
+  "function announce(uint256 schemeId, address stealthAddress, bytes ephemeralPubKey, bytes metadata)",
+  "function hasKeys(address registrant, uint256 schemeId) view returns (bool)",
+  "function stealthMetaAddressOf(address registrant, uint256 schemeId) view returns (bytes)",
+]);
+
+export const settlementRouterAbi = parseAbi([
+  "function routeEpochToStealth(uint64 epochId, address tokenIn, address tokenOut, uint24 poolFee, uint256 amountOutMinimum, uint256 deadline, address stealthRecipient) returns (uint256)",
+  "function routed(uint64 epochId) view returns (bool)",
+]);
+
+/** ERC-5564 scheme 1: secp256k1 with view tags. The only scheme Kairos uses. */
+export const STEALTH_SCHEME_ID = 1n;
+
 export interface ConfidentialConfig {
   rpcUrl: string;
   vaultAddress: Address;
   capPolicyAddress?: Address;
+  /** ERC-5564 bulletin board. Without it, stealth payments cannot be found. */
+  stealthAnnouncerAddress?: Address;
+  /** Where a proven epoch aggregate is swapped and paid out. */
+  settlementRouterAddress?: Address;
   /** Relayer key. The only secret this package touches. */
   relayerPrivateKey?: Hex;
 }
@@ -330,5 +349,97 @@ export class ConfidentialClient {
 
   async flushEpoch(): Promise<Hex> {
     return this.send("flushEpoch", []);
+  }
+
+  // ---- stealth payouts -----------------------------------------------------
+  //
+  // The relayer hides the payer: every agent shares one sender. These close the
+  // other half. A payout to a fixed address builds a public history of how often
+  // and how much this operator is paid; a stealth address has never appeared
+  // on-chain and only its recipient can link it to themselves.
+
+  /** True when this gateway can publish a stealth payment. */
+  get canAnnounceStealth(): boolean {
+    return this.walletClient !== undefined && this.config.stealthAnnouncerAddress !== undefined;
+  }
+
+  /**
+   * Publish a stealth payment so its recipient can find it.
+   *
+   * The recipient can only re-derive the address once they learn the sender's
+   * ephemeral public key, and no private channel exists to hand it over — so it
+   * goes in the open. That is safe: without the recipient's viewing private key
+   * it identifies neither the payment nor who it was meant for.
+   *
+   * Announced by the shared relayer, so it leaks nothing about the payer either.
+   */
+  async announceStealthPayment(payment: {
+    stealthAddress: Address;
+    ephemeralPublicKey: Hex;
+    viewTag: number;
+  }): Promise<Hex> {
+    const announcer = this.config.stealthAnnouncerAddress;
+    if (!announcer) throw upstreamFailure("stealth", { reason: "no announcer configured" });
+    if (!this.walletClient) throw upstreamFailure("stealth", { reason: "read-only gateway" });
+
+    const hash = await this.walletClient.writeContract({
+      address: announcer,
+      abi: stealthAnnouncerAbi,
+      functionName: "announce",
+      args: [
+        STEALTH_SCHEME_ID,
+        payment.stealthAddress,
+        payment.ephemeralPublicKey,
+        // ERC-5564 metadata: the first byte is the view tag, which lets a
+        // recipient reject ~255 of every 256 announcements with one hash rather
+        // than an elliptic-curve operation.
+        `0x${payment.viewTag.toString(16).padStart(2, "0")}` as Hex,
+      ],
+    });
+    const receipt = await this.publicClient.waitForTransactionReceipt({ hash });
+    if (receipt.status !== "success") throw upstreamFailure("announce", { hash });
+    return hash;
+  }
+
+  /**
+   * Route a proven epoch aggregate to a stealth address.
+   *
+   * This is where money actually reaches the one-time address. {@link settle}
+   * only debits the encrypted budget; the payout is per-epoch by design, because
+   * a per-call transfer would republish exactly the timing the batch hides.
+   *
+   * Deliberately not exposed as an MCP tool. An agent able to drain the router
+   * on demand would have a blast radius larger than the cap it was given.
+   */
+  async routeEpochToStealth(params: {
+    epochId: number;
+    tokenIn: Address;
+    tokenOut: Address;
+    poolFee: number;
+    amountOutMinimum: bigint;
+    deadline: bigint;
+    stealthRecipient: Address;
+  }): Promise<Hex> {
+    const router = this.config.settlementRouterAddress;
+    if (!router) throw upstreamFailure("stealth", { reason: "no settlement router configured" });
+    if (!this.walletClient) throw upstreamFailure("stealth", { reason: "read-only gateway" });
+
+    const hash = await this.walletClient.writeContract({
+      address: router,
+      abi: settlementRouterAbi,
+      functionName: "routeEpochToStealth",
+      args: [
+        BigInt(params.epochId),
+        params.tokenIn,
+        params.tokenOut,
+        params.poolFee,
+        params.amountOutMinimum,
+        params.deadline,
+        params.stealthRecipient,
+      ],
+    });
+    const receipt = await this.publicClient.waitForTransactionReceipt({ hash });
+    if (receipt.status !== "success") throw upstreamFailure("routeEpochToStealth", { hash });
+    return hash;
   }
 }
