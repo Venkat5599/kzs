@@ -101,18 +101,26 @@ export const store = {
     return server;
   },
 
+  /**
+   * Populate the catalogue with obviously-fictional entries.
+   *
+   * These exist so the marketplace has something to render on a fresh gateway.
+   * Every name is prefixed and every vendor is invented, because a catalogue row
+   * that could be mistaken for a real integration would misrepresent the
+   * product: the confidential settlement path is real, this listing is not.
+   */
   seedSkills(): Skill[] {
     [
-      { name: "Market data", description: "Metered price feed", priceWei: "1500", vendor: "acme", egress: ["api.acme.dev"] },
-      { name: "Sentiment", description: "Text sentiment scoring", priceWei: "800", vendor: "beta", egress: ["api.beta.ai"] },
-      { name: "Geocoding", description: "Address to coordinates", priceWei: "400", vendor: "atlas", egress: ["api.atlas.io"] },
+      { name: "Sample — Market data", description: "Example listing. Metered price feed.", priceWei: "1500", vendor: "sample-vendor", egress: ["api.example.dev"] },
+      { name: "Sample — Sentiment", description: "Example listing. Text sentiment scoring.", priceWei: "800", vendor: "sample-vendor", egress: ["api.example.ai"] },
+      { name: "Sample — Geocoding", description: "Example listing. Address to coordinates.", priceWei: "400", vendor: "sample-vendor", egress: ["api.example.io"] },
     ].forEach((s) => store.publishSkill(s));
     return store.skills();
   },
 
   seedWorkflows(): Workflow[] {
     store.saveWorkflow({
-      name: "Branch demo",
+      name: "Sample — branch demo",
       graph: {
         nodes: [
           { id: "start", kind: "trigger" },

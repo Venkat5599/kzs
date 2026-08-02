@@ -74,7 +74,7 @@ export function MarketplaceSection() {
         </div>
         <Button variant="outline" onClick={seed} disabled={seeding}>
           {seeding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-          Seed templates
+          Load sample catalogue
         </Button>
       </div>
 
@@ -87,7 +87,10 @@ export function MarketplaceSection() {
         <Panel className="text-center">
           <p className="text-sm text-neutral-400">No public listings yet.</p>
           <p className="mt-2 text-xs text-neutral-500">
-            Click <strong className="text-white">Seed templates</strong> to load starter APIs, MCP server, and workflows (kage-style demo catalog).
+            Nothing has been published to this gateway yet. Click{" "}
+            <strong className="text-white">Load sample catalogue</strong> to fill it with example
+            entries — clearly marked, and there only to show what a populated marketplace looks
+            like. The confidential settlement path is real; these listings are not.
           </p>
         </Panel>
       )}

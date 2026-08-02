@@ -8,6 +8,23 @@
 
 </div>
 
+**An AI agent can hold a budget it cannot read and cannot raise.** Connect Kairos to
+Claude Code over MCP and ask it to pay. The amount is encrypted, checked against a cap
+inside a TEE, and the agent learns exactly one thing: allowed, or not. It never sees
+the treasury, never learns its own limit, and never holds a key.
+
+**Both halves of a payment are hidden, not one.** Every settlement shares a single
+relayer, so the chain cannot tell which agent paid — and payouts land on ERC-5564
+stealth addresses that have never appeared on-chain, so it cannot accumulate a record
+of who was paid either. Most privacy work covers the payer and stops there.
+
+**A refusal is indistinguishable from an approval.** An encrypted boolean cannot gate
+a `require`, because reverting *is* the leak. So authorization is branchless: the
+transaction succeeds either way and only the encrypted flag differs.
+
+**And none of it forks anything.** The settlement is swapped through Uniswap's own
+deployed V3 router, over its existing ABI, against its existing pools.
+
 **[ Live demo ↗ ](https://kairos-nox.vercel.app)** · **[ Dashboard ↗ ](https://kairos-nox.vercel.app/dashboard)** · **[ Mirror ↗ ](https://kairos.187.127.137.136.sslip.io)**
 
 ---
@@ -19,6 +36,7 @@
 | **KairosRingRegistry** | [`0x00b439e437dabea9d3562f40dacd42be8372fee8`](https://sepolia.etherscan.io/address/0x00b439e437dabea9d3562f40dacd42be8372fee8) |
 | **KairosVault** (ring 0) | [`0x1b5919e3ec31daaa88a69ca4bf27aa83dbed57f8`](https://sepolia.etherscan.io/address/0x1b5919e3ec31daaa88a69ca4bf27aa83dbed57f8) |
 | **KairosSettlementRouter** | [`0xec0ec50c8ebffb89aed3072d7c4a74671b2e8d7f`](https://sepolia.etherscan.io/address/0xec0ec50c8ebffb89aed3072d7c4a74671b2e8d7f) |
+| **StealthAnnouncer** (ERC-5564) | [`0x07ef4c4c82a093c6eef1b44fd3750695a80b48f1`](https://sepolia.etherscan.io/address/0x07ef4c4c82a093c6eef1b44fd3750695a80b48f1) |
 | NoxCompute (protocol) | [`0x24Ef36Ec5b626D7DCD09a98F3083c2758F0F77bF`](https://sepolia.etherscan.io/address/0x24Ef36Ec5b626D7DCD09a98F3083c2758F0F77bF) |
 | CompositePolicy | [`0x1de0cde89f528948783776af5737a9510ce9f89a`](https://sepolia.etherscan.io/address/0x1de0cde89f528948783776af5737a9510ce9f89a) |
 | ├ CapPolicy | [`0xa3917c56d009e53c0fb58536f2765fc7ea41f7c6`](https://sepolia.etherscan.io/address/0xa3917c56d009e53c0fb58536f2765fc7ea41f7c6) |

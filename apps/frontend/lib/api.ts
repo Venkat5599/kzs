@@ -1,4 +1,18 @@
-const BASE = (process.env.NEXT_PUBLIC_GATEWAY_URL ?? "http://localhost:8080").replace(/\/+$/, "");
+/**
+ * Where the dashboard calls the gateway.
+ *
+ * An explicit `NEXT_PUBLIC_GATEWAY_URL` always wins. Without one the fallback is
+ * chosen by build rather than hardcoded to localhost: a production deploy that
+ * quietly pointed at `localhost:8080` would serve a dashboard where every panel
+ * is dead for everyone except the person who built it, and it would read as the
+ * gateway being down rather than misconfigured.
+ */
+const FALLBACK =
+  process.env.NODE_ENV === "production"
+    ? "https://agentfabric-api.187.127.137.136.sslip.io"
+    : "http://localhost:8080";
+
+const BASE = (process.env.NEXT_PUBLIC_GATEWAY_URL ?? FALLBACK).replace(/\/+$/, "");
 
 export interface SkillSummary {
   id: string;
