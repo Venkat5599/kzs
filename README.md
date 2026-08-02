@@ -422,6 +422,35 @@ and `kairos_stealth_check` to identify its own payments. It cannot trigger a
 payout: an agent able to drain the router on demand would have a blast radius
 larger than the cap it was given.
 
+**Proven on Sepolia, not asserted.** `bun run --cwd contracts prove:stealth-payout`
+routes a proven epoch aggregate to a freshly derived address and checks the balance
+actually moved. An address the recipient cannot be paid at is not privacy, it is a
+hole with good documentation.
+
+```
+epoch 0: 4 settlements -> proven aggregate 80000
+
+  PASS  recipient recognises the address as theirs
+  PASS  recipient holds the private key for it
+  PASS  a stranger scanning the announcement learns nothing
+  PASS  announcement landed
+  PASS  the stealth address starts empty
+  PASS  route transaction succeeded
+  PASS  the stealth address received the payout
+
+  paid 79759 to 0x9833a34c7ab8b39539d7efe739cc801b41787277
+```
+
+| | Transaction |
+|---|---|
+| announce | [`0x5d37d94b…d8d3e61`](https://sepolia.etherscan.io/tx/0x5d37d94b5955ed0666f6bf088eb6245232bf06a8c68b2cfb1ed905a85d8d3e61) |
+| routeEpochToStealth | [`0xa0240364…f59783de`](https://sepolia.etherscan.io/tx/0xa02403640a6094dc5ab1c717347bef44447971dfe9c3a6085b36de7cf59783de) |
+| the paid address | [`0x9833a34c…41787277`](https://sepolia.etherscan.io/address/0x9833a34c7ab8b39539d7efe739cc801b41787277) |
+
+80000 in, 79759 out — the difference is Uniswap's own 0.3% pool fee, taken by an
+unmodified router that never learned it was settling encrypted balances. The
+recipient address had never appeared on-chain before that transaction.
+
 **Limitations, stated as prominently as the guarantees.** `msg.sender` is
 inherently public: all settlements share one gateway relayer, so per-caller
 activity is not distinguishable — but the relayer is visible and learns what it

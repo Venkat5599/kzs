@@ -13,7 +13,7 @@
     "prove:live": "bun script/prove-live.ts",
     "prove:flush": "bun script/prove-flush.ts",
     "prove:stealth": "bun script/prove-stealth.ts",
-    "prove:stealth-payout": "bun script/prove-stealth-payout.ts",
+    "prove:stealth-payout": "hardhat run script/prove-stealth-payout.ts --network sepolia",
     "prove:swap": "hardhat run script/prove-swap.ts --network sepolia",
     "deploy:ring": "hardhat run script/deploy-ring.ts --network sepolia"
   },
