@@ -23,7 +23,7 @@ export const siteConfig = {
   url: "https://kairos-nox.vercel.app",
   twitter: "@kairos",
   repo: "https://github.com/Venkat5599/kzs",
-  gateway: "https://agentfabric-api.187.127.137.136.sslip.io",
+  gateway: "https://kairos-api.187.127.137.136.sslip.io",
   vault: VAULT,
   vaultExplorer: `${EXPLORER}/${VAULT}`,
   router: ROUTER,

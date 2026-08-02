@@ -5,7 +5,7 @@
   "buildCommand": "bun run build",
   "build": {
     "env": {
-      "NEXT_PUBLIC_GATEWAY_URL": "https://agentfabric-api.187.127.137.136.sslip.io"
+      "NEXT_PUBLIC_GATEWAY_URL": "https://kairos-api.187.127.137.136.sslip.io"
     }
   }
 }

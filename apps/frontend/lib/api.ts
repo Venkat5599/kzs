@@ -9,7 +9,10 @@
  */
 const FALLBACK =
   process.env.NODE_ENV === "production"
-    ? "https://agentfabric-api.187.127.137.136.sslip.io"
+    ? // kairos-api, not agentfabric-api. The latter is a different project on a
+      // different vault; pointing here at it returns plausible-looking data for
+      // the wrong system and has no stealth routes at all.
+      "https://kairos-api.187.127.137.136.sslip.io"
     : "http://localhost:8080";
 
 const BASE = (process.env.NEXT_PUBLIC_GATEWAY_URL ?? FALLBACK).replace(/\/+$/, "");
