@@ -209,11 +209,16 @@ export interface FabricStats {
   totals: {
     apis: number;
     requests: number;
-    success: number;
     earnings: number;
     mcpServers: number;
     workflows: number;
-    successRate: number;
+    /**
+     * Null when unknowable, which is the normal case. Settlement outcomes are
+     * encrypted, so the gateway cannot count successes without decrypting a
+     * verdict it has no right to read.
+     */
+    success: number | null;
+    successRate: number | null;
   };
   session: { cap: string | null; spent: string | null; remaining: string | null; expiry: string | null; live: boolean };
 }

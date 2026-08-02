@@ -206,7 +206,18 @@ export function DashboardHome({
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Stat icon={Layers} label="Total APIs" value={skills?.length ?? t?.apis ?? "—"} sub="x402 payment-gated skills" />
         <Stat icon={Activity} label="Total Requests" value={t?.requests ?? "—"} sub="all-time API calls" />
-        <Stat icon={CheckCircle2} label="Success Rate" value={t ? `${t.successRate}%` : "—"} sub={`${t?.success ?? 0} successful`} />
+        {/*
+          Not a gap in the dashboard — a property of the system. Whether a
+          settlement was authorized is encrypted, so this number is unknowable
+          here by design. A dash plus the reason is more honest, and more
+          on-message, than printing a rate nobody measured.
+        */}
+        <Stat
+          icon={CheckCircle2}
+          label="Success Rate"
+          value={t?.successRate != null ? `${t.successRate}%` : "—"}
+          sub={t?.success != null ? `${t.success} successful` : "encrypted — not knowable here"}
+        />
         <Stat icon={DollarSign} label="Total Earnings" value={t?.earnings ?? "—"} sub="ETH wei earned" />
       </div>
 

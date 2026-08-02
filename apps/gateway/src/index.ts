@@ -214,11 +214,17 @@ app.get("/fabric/stats", async (c) => {
     totals: {
       apis: store.skills().length,
       requests,
-      success: requests,
+      // Null, not a number. The gateway records that settlements happened but
+      // not whether each one was authorized — it cannot, because the verdict is
+      // encrypted and only a permitted account may read it. Reporting
+      // `success: requests` and a flat 100% would be inventing telemetry this
+      // system is deliberately unable to collect, on a dashboard whose whole
+      // claim is that it does not know what it should not know.
+      success: null,
+      successRate: null,
       earnings: Number(budget.epochTotalWei ?? 0),
       mcpServers: store.mcpServers().length,
       workflows: store.workflows().length,
-      successRate: requests === 0 ? 0 : 100,
     },
     session: {
       // The treasury is the operator's budget, decrypted for them alone. It is
