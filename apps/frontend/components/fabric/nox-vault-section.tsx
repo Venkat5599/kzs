@@ -13,6 +13,7 @@ import {
   noxFund,
   noxRegisterAgent,
   noxSettle,
+  withExplorerTx,
   type NoxAgent,
   type NoxBudget,
   type NoxClosedEpoch,
@@ -249,7 +250,7 @@ export function NoxVaultSection() {
                 disabled={busy !== null}
                 onClick={() =>
                   run("fund", async () => {
-                    const tx = await noxFund(fundAmt);
+                    const tx = withExplorerTx(await noxFund(fundAmt));
                     setLastTx({ url: tx.explorerUrl, hash: tx.txHash, label: "funded" });
                   })
                 }
@@ -276,7 +277,7 @@ export function NoxVaultSection() {
                   disabled={busy !== null || !agentAddr}
                   onClick={() =>
                     run("register", async () => {
-                      const tx = await noxRegisterAgent(agentAddr, capAmt);
+                      const tx = withExplorerTx(await noxRegisterAgent(agentAddr, capAmt));
                       setLastTx({ url: tx.explorerUrl, hash: tx.txHash, label: "agent registered" });
                     })
                   }
@@ -296,7 +297,7 @@ export function NoxVaultSection() {
               disabled={busy !== null}
               onClick={() =>
                 run("flush", async () => {
-                  const tx = await noxFlushEpoch();
+                  const tx = withExplorerTx(await noxFlushEpoch());
                   setLastTx({ url: tx.explorerUrl, hash: tx.txHash, label: `epoch ${tx.epoch}` });
                 })
               }
@@ -329,7 +330,7 @@ export function NoxVaultSection() {
                 disabled={busy !== null}
                 onClick={() =>
                   run("settle", async () => {
-                    const result = await noxSettle(recipient, settleAmt);
+                    const result = withExplorerTx(await noxSettle(recipient, settleAmt));
                     setSettlement(result);
                     setLastTx({
                       url: result.explorerUrl,
@@ -362,7 +363,7 @@ export function NoxVaultSection() {
                   {settlement.authorized ? "Authorized" : "Rejected — over cap or budget"}
                 </div>
                 <div className="text-xs text-neutral-500">
-                  The cap was never decrypted. Both outcomes look identical on-chain.
+                  An observer cannot tell the two outcomes apart on-chain.
                 </div>
                 <TxLink url={settlement.explorerUrl} hash={settlement.txHash} />
               </div>

@@ -17,6 +17,8 @@ const FALLBACK =
 
 const ABSOLUTE = (process.env.NEXT_PUBLIC_GATEWAY_URL ?? FALLBACK).replace(/\/+$/, "");
 
+import { txUrl } from "./config";
+
 /**
  * In the browser, go through the same-origin `/gw` proxy declared in
  * `next.config.ts`; on the server, call the gateway directly.
@@ -478,10 +480,12 @@ export interface NoxSettlement extends NoxTx {
 
 async function noxJson<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, init);
-  const body = (await res.json()) as T & { error?: string };
+  const body = (await res.json()) as T & { error?: string; message?: string };
   // 402 is a meaningful answer here (settlement not authorized), not a failure.
   if (!res.ok && res.status !== 402) {
-    throw new Error(body.error ?? `${path} failed: ${res.status}`);
+    // The gateway answers `{ error: <code>, message: <human text> }`; surface
+    // the message, falling back to the code when no message came back.
+    throw new Error(body.message ?? body.error ?? `${path} failed: ${res.status}`);
   }
   return body;
 }
@@ -504,6 +508,21 @@ const postJson = (body: unknown): RequestInit => ({
   body: JSON.stringify(body),
 });
 
+/**
+ * Attach the explorer link a raw gateway tx response does not carry.
+ *
+ * The gateway answers `{ hash }`; the UI's `NoxTx` shape wants `txHash` +
+ * `explorerUrl`. Derive both from the hash so every transaction card links to
+ * Etherscan.
+ */
+export function withExplorerTx<T>(r: T & { hash?: string; txHash?: string; explorerUrl?: string }): T & { txHash?: string; explorerUrl?: string } {
+  const h = r.txHash ?? r.hash;
+  return {
+    ...r,
+    ...(h ? { txHash: h, ...(r.explorerUrl ? {} : { explorerUrl: txUrl(h) }) } : {}),
+  };
+}
+
 export function noxFund(amountWei: string): Promise<NoxTx> {
   return noxJson<NoxTx>("/nox/fund", postJson({ amountWei }));
 }
@@ -512,8 +531,8 @@ export function noxRegisterAgent(agent: string, capWei: string): Promise<NoxTx> 
   return noxJson<NoxTx>("/nox/agents", postJson({ agent, capWei }));
 }
 
-export function noxSettle(recipient: string, amountWei: string): Promise<NoxSettlement> {
-  return noxJson<NoxSettlement>("/nox/settle", postJson({ recipient, amountWei }));
+export function noxSettle(agent: string, amountWei: string): Promise<NoxSettlement> {
+  return noxJson<NoxSettlement>("/nox/settle", postJson({ agent, amountWei }));
 }
 
 export function noxFlushEpoch(): Promise<NoxTx & { epoch?: number }> {

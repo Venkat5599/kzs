@@ -15,6 +15,12 @@ const ROUTER = "0xec0ec50c8ebffb89aed3072d7c4a74671b2e8d7f";
 const UNISWAP_ROUTER = "0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E";
 const EXPLORER = "https://sepolia.etherscan.io/address";
 
+/** Base for transaction links (the explorer's `/tx` path, not `/address`). */
+const TX_EXPLORER = "https://sepolia.etherscan.io/tx";
+
+/** Link a transaction hash on the explorer. */
+export const txUrl = (hash: string) => `${TX_EXPLORER}/${hash}`;
+
 export const siteConfig = {
   name: "Kairos",
   tagline: "A confidentiality layer for public DeFi",
