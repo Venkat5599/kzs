@@ -5,6 +5,11 @@
   // `ArtifactMap`. Without them in the program every `deployContract(...)`
   // resolves to an untyped contract and every `.read`/`.write` call reads as
   // `possibly undefined`.
+  //
+  // `artifacts/` is build output and gitignored, so it does not exist in a
+  // fresh clone or on CI. That is why the `typecheck` script runs `hardhat
+  // build` first — without it, typecheck passes locally and fails in CI with
+  // fifty "possibly undefined" errors that have nothing to do with the code.
   "include": [
     "script/**/*.ts",
     "test/**/*.ts",

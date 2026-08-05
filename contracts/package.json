@@ -7,7 +7,7 @@
   "scripts": {
     "build": "hardhat build",
     "test": "hardhat test",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "hardhat build && tsc --noEmit",
     "lint": "prettier --check 'src/**/*.sol'",
     "deploy:sepolia": "hardhat run script/deploy.ts --network sepolia",
     "verify:sepolia": "bun script/verify.ts",
