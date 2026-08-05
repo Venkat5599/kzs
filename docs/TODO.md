@@ -51,6 +51,28 @@ the reasoning, this one is the checklist.
       wired but unrun (needs `ETHERSCAN_API_KEY`)
 - [x] x402 quote-then-pay — `POST /x402/skills/:slug`, quote remembered so a
       stealth payee stays stable across the two legs
+- [x] Frontend lint 100% clean — the last 4 warnings cleared with `useCallback`
+      (the fetch-on-mount effects in the apis/mcp/workflows sections) and a
+      named eslint config export
+- [x] Fixed the dashboard hydration mismatch — `gatewayUrl` rendered the
+      absolute URL server-side but `/gw` client-side, so every dashboard load
+      threw a recoverable error. Split into `gatewayUrl` (absolute, for display
+      and copied commands) and `apiBase` (the same-origin `/gw` proxy, for
+      fetches)
+- [x] Fixed the `/dashboard/apis/[slug]` crash — the page read
+      `skill.manifest.*` but the gateway serves flat fields; it now renders
+      the real shape and the x402 invoke flow works
+- [x] Fixed duplicate React keys across APIs / Workflows / MCP / Marketplace —
+      the catalogue is slug-keyed (samples carry no id); keys now fall back to
+      the slug, and the `id` fields are typed optional
+- [x] Normalized gateway rows to the shapes the UI renders: API samples show
+      their real `priceWei`/`egress` (no more "pay undefined ETH"), MCP servers
+      show `name`/no bogus "Invalid Date", workflows derive steps/tags from the
+      graph (no more "0 steps")
+- [x] `NEXT_PUBLIC_FABRIC_MCP_URL` now defaults to the gateway origin instead
+      of `localhost:8403`, so the MCP connect URL is real on every deploy
+- [x] `docs/DEMO_SCRIPT.md` — full 10/10 recording script (shots, narration,
+      exact addresses, production notes)
 
 ---
 
@@ -61,11 +83,14 @@ green in all six workspaces, `bun run build` green, `bun run test` is 48/48 unit
 plus 13/13 contract.
 
 ### 1. Demo video — the only submission blocker
-- [ ] Record: landing page → vault showing real decrypted balance → settle under
-      the limit → settle over it and show it refused → publish batch → the
-      Etherscan transaction where the over-limit settle *succeeded*
+- [ ] Record the demo following `docs/DEMO_SCRIPT.md` (script is done; the
+      recording is the remaining step): landing page → vault showing real
+      decrypted balance → settle under the limit → settle over it and show it
+      refused → publish batch → the Etherscan transaction where the over-limit
+      settle *succeeded*
 - The recording currently on disk ran against a stub gateway and cannot be
-  submitted under the no-mock-data criterion. Re-record against the live gateway.
+  submitted under the no-mock-data criterion. Re-record against the live
+  gateway.
 
 ### 2. Yours, not code — needs a key this environment does not hold
 - [ ] **Rotate the deployer key** — it is in a chat transcript
@@ -74,16 +99,11 @@ plus 13/13 contract.
 - [ ] Re-read the limitations sections; they must still be true
 
 ### 3. Known, and deliberately not fixed
-- [ ] `bun run lint` fails in `apps/frontend`: 13 errors, all from the
-      React-Compiler `react-hooks/*` rules that ship with Next 16's config
-      (`set-state-in-effect` ×8, `refs` ×3, `purity` ×1, plus one more). They are
-      the fetch-on-mount and hydrate-from-localStorage patterns across the
-      dashboard. Clearing them honestly means moving that data layer onto
-      `useQuery` — react-query is already installed and a provider exists in
-      `lib/wallet.tsx:186` — or `useSyncExternalStore` for the localStorage
-      reads. Converting the async bodies to `.then` chains silences the rule but
-      makes the code materially harder to read, which is not a trade worth making
-      before the demo is recorded.
+- [x] ~~`bun run lint` fails in `apps/frontend`: 13 errors, all from the
+      React-Compiler `react-hooks/*` rules~~ — cleared. The remaining 4
+      warnings were fixed with `useCallback` (the honest fix; no `.then`
+      chains that would silence the rule by making the code unreadable).
+      `bun run lint` is now 0 errors, 0 warnings in every workspace.
 
 ### 4. Nice to have, not needed to submit
 - [ ] `packages/{chain,authz,manifest,workflow,sdk}` — only `shared` and
