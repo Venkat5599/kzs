@@ -125,6 +125,9 @@ export function NoxVaultSection() {
       let a: NoxAgent | null = null;
       if (s.relayer) {
         setAgentAddr((prev) => prev || s.relayer!);
+        // The settle form must default to the registered agent too — settling
+        // as the dead-address placeholder was a guaranteed error on every tap.
+        setRecipient((prev) => (prev === DEAD ? s.relayer! : prev));
         a = await getNoxAgent(s.relayer).catch(() => null);
         setAgent(a);
       }
