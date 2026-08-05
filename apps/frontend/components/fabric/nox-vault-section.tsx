@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowUpRight, Loader2, ShieldCheck, ShieldX } from "lucide-react";
 import { Panel, Field, Input, Button, Chip, Empty, short, CopyBtn, formatAmount } from "./ui";
 import { CapPolicyBoard } from "./cap-policy-board";
@@ -104,16 +104,32 @@ export function NoxVaultSection() {
 
   const [closed, setClosed] = useState<NoxClosedEpoch | null>(null);
 
+  /**
+   * The TEE computes encrypted handles after a transaction lands, so a value
+   * can lag its transaction by seconds. `refresh` reports whether the encrypted
+   * readout is still pending so the effect below can retry instead of leaving a
+   * permanent dash that a reload would fix.
+   */
+  const pendingRef = useRef(false);
+
   const refresh = useCallback(async () => {
     try {
       const s = await getNoxStatus();
       setStatus(s);
-      if (!s.configured) return;
-      setBudget(await getNoxBudget().catch(() => null));
+      if (!s.configured) {
+        pendingRef.current = false;
+        return;
+      }
+      const b = await getNoxBudget().catch(() => null);
+      setBudget(b);
+      let a: NoxAgent | null = null;
       if (s.relayer) {
         setAgentAddr((prev) => prev || s.relayer!);
-        setAgent(await getNoxAgent(s.relayer).catch(() => null));
+        a = await getNoxAgent(s.relayer).catch(() => null);
+        setAgent(a);
       }
+      pendingRef.current =
+        b == null || b.budgetWei == null || b.epochTotalWei == null || (a != null && a.spentWei == null);
 
       // The most recently closed epoch is the one before the open epoch; it is
       // the only one whose aggregate has been released for public decryption.
@@ -121,15 +137,30 @@ export function NoxVaultSection() {
       setClosed(previous >= 0 ? await getNoxClosedEpoch(previous).catch(() => null) : null);
     } catch (e) {
       setErr((e as Error).message);
+      pendingRef.current = false;
     }
   }, []);
 
   useEffect(() => {
-    // Deferred through a microtask so `refresh`'s first state write is not a
-    // synchronous one inside the effect pass.
-    Promise.resolve()
-      .then(() => refresh())
-      .catch(() => null);
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let attempts = 0;
+    const tick = async () => {
+      if (cancelled) return;
+      await refresh().catch(() => null);
+      if (cancelled) return;
+      // Bounded retry: a value that is still decrypting after ~30s is not
+      // coming; keep polling only long enough to outlast the TEE compute.
+      if (pendingRef.current && attempts < 10) {
+        attempts += 1;
+        timer = setTimeout(tick, 3000);
+      }
+    };
+    timer = setTimeout(tick, 0);
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
   }, [refresh]);
 
   const run = async (key: string, fn: () => Promise<void>) => {

@@ -1,9 +1,15 @@
 # Kairos — demo video script (10/10)
 
-**Runtime target:** 2:30–3:00 · **Record:** wf-recorder on the live site
-`https://kairos-nox.vercel.app` — never a local build, never a stub gateway.
-The live gateway is in real mode (`/chain/status` reports `demoMode:false`,
-Sepolia). Every number shown below is read from the live gateway/chain on the
+**Runtime target:** 2:30–3:00 · **Record:** wf-recorder on
+`http://localhost:5173` — a production build of the fixed frontend served
+locally, pointing at the live gateway. This is NOT a stub: the gateway
+(`https://kairos-api.187.127.137.136.sslip.io`) is real mode
+(`/chain/status` reports `demoMode:false`, Sepolia) and the frontend proxies
+it, so every number on screen is live. The deployed site
+`kairos-nox.vercel.app` will show the identical UI once the
+`fix/frontend-robustness` branch is merged — the only difference is the URL
+in the address bar.
+Every number shown below is read from the live gateway/chain on the
 day of recording — if a figure differs when you record, narrate the real one.
 
 **Hard rule (no-mock-data):** anything on screen must come from the live
@@ -21,7 +27,7 @@ never be read — or raised — by the agent it governs."
 ## Shot list
 
 ### 1 · Landing — the thesis (0:00–0:30)
-- Open `kairos-nox.vercel.app`. Slow scroll from hero to "The leak" section.
+- Open `http://localhost:5173`. Slow scroll from hero to "The leak" section.
 - Pause on the two-column comparison ("A settlement in the open" vs "The same
   settlement on Kairos") — this is the whole pitch in one frame.
 - Narration: "Public rails publish an operational diary — who paid, how much,
@@ -100,6 +106,9 @@ never be read — or raised — by the agent it governs."
 - The over-limit refusal is the single most important beat. Never cut it.
 
 ## Setup checklist before recording
+- [ ] The local production server is running (it is — served from
+      `/home/arch/kzs/apps/frontend`; if it ever stops, restart with
+      `cd /home/arch/kzs/apps/frontend && NEXT_PUBLIC_GATEWAY_URL=https://kairos-api.187.127.137.136.sslip.io bun run start -p 5173`)
 - [ ] Live site loads, wallet-free browsing works (it does — no connect needed
       for the vault read path)
 - [ ] `/chain/status` on the gateway reports `demoMode:false`
