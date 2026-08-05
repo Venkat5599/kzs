@@ -15,6 +15,15 @@ import { loadConfig } from "./config.js";
 import { store } from "./store.js";
 import { handleMcp } from "./mcp.js";
 import { announceStealthPayout, resolveStealthPayout } from "./stealth.js";
+import {
+  claimQuote,
+  decodePaymentHeader,
+  quoteEnvelope,
+  quoteFor,
+  rememberQuote,
+  receiptHeader,
+  verifyAgainstQuote,
+} from "./x402.js";
 
 /**
  * The Kairos gateway.
@@ -261,6 +270,102 @@ app.post("/fabric/provision", async (c) => {
 });
 
 app.get("/payments/usage", (c) => c.json({ items: store.activity() }));
+
+// ============ x402 ============
+//
+// Quote, then pay. `/nox/settle` already authorized payments; what was missing
+// was a way for a caller to ask the price first, which is what makes the
+// catalogue navigable by an agent that has never seen it.
+//
+// The privacy rule from `/nox/settle` carries over verbatim and is the reason
+// this route is shaped the way it is: an unpaid request and a refused payment
+// get byte-identical 402 responses. Distinguishing them would let a caller
+// binary-search the encrypted cap by sending payments and watching which shape
+// came back — defeating the branchless settle path entirely.
+
+app.post("/x402/skills/:slug", async (c) => {
+  const slug = c.req.param("slug");
+  const skill = store.skill(slug);
+  // A 404 before any payment consideration. Whether a skill exists is public —
+  // it is in `GET /skills` — so this leaks nothing the catalogue does not.
+  if (!skill) throw new KairosError("not_found", "Skill not found.");
+
+  const body = await c.req
+    .json<{ agent?: string; payTo?: string }>()
+    .catch(() => ({}) as { agent?: string; payTo?: string });
+
+  // Derived before anything else so a malformed meta-address is a 400 rather
+  // than a payment nobody can collect — the same ordering as `/nox/settle`.
+  const payout = resolveStealthPayout(config, body.payTo);
+  const payTo = payout?.stealthAddress ?? confidential.relayerAddress;
+  if (!payTo) {
+    throw new KairosError("misconfigured", "No payee: gateway is read-only and no payTo was given.");
+  }
+
+  /** A fresh quote, remembered so the payment answering it can be checked. */
+  const offer = () => {
+    const requirements = quoteFor(skill, new URL(c.req.url).pathname, payTo);
+    rememberQuote(requirements);
+    return quoteEnvelope(requirements);
+  };
+
+  const header = c.req.header("X-PAYMENT");
+  if (!header) return c.json(offer(), 402);
+
+  // A malformed header is a broken client, not a declined payment, so it throws
+  // `invalid_input` and lands on 400 rather than being answered with a quote.
+  const payment = decodePaymentHeader(header);
+
+  const agent = body.agent ?? payment.payload.authorization.from;
+  if (!agent) throw new KairosError("invalid_input", "agent is required");
+
+  // Checked against the quote that was issued, never a freshly derived one. With
+  // stealth payouts the payee is a one-time address, so re-deriving here would
+  // refuse every honest payment for being addressed to the wrong place.
+  const requirements = claimQuote(payment.payload.authorization.nonce);
+  if (!requirements) {
+    console.warn(`[x402] unknown, expired or replayed quote for ${slug}`);
+    return c.json(offer(), 402);
+  }
+
+  try {
+    verifyAgainstQuote(payment, requirements);
+  } catch (cause) {
+    // Logged in full, answered with nothing. The operator needs to know why a
+    // payment failed; the caller must not.
+    if (KairosError.is(cause) && cause.code === "payment_required") {
+      console.warn(`[x402] rejected payment for ${slug}: ${cause.message}`);
+      return c.json(offer(), 402);
+    }
+    throw cause;
+  }
+
+  const { hash, verdict } = await confidential.settle(
+    agent as Address,
+    BigInt(requirements.maxAmountRequired),
+  );
+
+  if (!mayServeResource(verdict)) {
+    if (verdict.outcome === "unreadable") {
+      console.warn(`[fail-closed] refused ${hash}: ${verdict.reason}`);
+    }
+    // The same object the unpaid request got. No hash, no reason, no extra key.
+    return c.json(offer(), 402);
+  }
+
+  // Announced only now, after authorization — announcing earlier would publish a
+  // payment that may never have happened. See stealth.ts.
+  const stealth = payout ? await announceStealthPayout(confidential, payout) : null;
+
+  c.header("X-PAYMENT-RESPONSE", receiptHeader(hash, agent));
+  return c.json({
+    paid: true,
+    skill: { slug: skill.slug, name: skill.name },
+    amountWei: requirements.maxAmountRequired,
+    hash,
+    ...(stealth ? { stealth } : {}),
+  });
+});
 
 // ============ stealth addresses ============
 //

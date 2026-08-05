@@ -193,8 +193,11 @@ contract KairosVault {
     function fund(externalEuint256 encryptedAmount, bytes calldata proof) external onlyOwner {
         euint256 amount = Nox.fromExternal(encryptedAmount, proof);
 
-        (ebool success, euint256 newTreasury, euint256 newSupply) =
-            Nox.mint(_treasury, amount, _totalSupply);
+        (ebool success, euint256 newTreasury, euint256 newSupply) = Nox.mint(
+            _treasury,
+            amount,
+            _totalSupply
+        );
 
         _treasury = newTreasury;
         _totalSupply = newSupply;
@@ -323,8 +326,11 @@ contract KairosVault {
         //    failure. Hand-rolling this with sub/select would reimplement, less
         //    safely, what the protocol already guarantees.
         Epoch storage epoch = _epochs[currentEpoch];
-        (ebool funded, euint256 newTreasury, euint256 newEpochTotal) =
-            Nox.transfer(_treasury, epoch.total, requested);
+        (ebool funded, euint256 newTreasury, euint256 newEpochTotal) = Nox.transfer(
+            _treasury,
+            epoch.total,
+            requested
+        );
 
         _treasury = newTreasury;
         epoch.total = newEpochTotal;
@@ -513,7 +519,11 @@ contract KairosVault {
 
     function epochInfo(
         uint64 epochId
-    ) external view returns (uint32 settlementCount, bool flushed, bool settled, uint256 aggregate) {
+    )
+        external
+        view
+        returns (uint32 settlementCount, bool flushed, bool settled, uint256 aggregate)
+    {
         Epoch storage epoch = _epochs[epochId];
         return (epoch.settlementCount, epoch.flushed, epoch.settled, epoch.aggregate);
     }

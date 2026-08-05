@@ -134,6 +134,54 @@ function ConnectToClaude() {
 
 const BUILTIN_TOOLS = ["kairos_chain_status", "kairos_budget", "list_skills", "get_skill", "fabric_reload"];
 
+const toggle = (arr: string[], set: (v: string[]) => void, v: string) =>
+  set(arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v]);
+
+/**
+ * Declared at module scope, not inside `CreateMcpForm`.
+ *
+ * A component defined in a render body is a new type on every render, so React
+ * cannot match it to the previous tree and tears the whole picker down and
+ * rebuilds it each keystroke. Everything it needs already arrives as props.
+ */
+function Pick({
+  label,
+  options,
+  sel,
+  set,
+}: {
+  label: string;
+  options: string[];
+  sel: string[];
+  set: (v: string[]) => void;
+}) {
+  return (
+    <div className="space-y-2">
+      <p className="text-sm font-semibold text-white">{label}</p>
+      {options.length === 0 ? (
+        <p className="text-xs text-neutral-500">none published yet</p>
+      ) : (
+        <div className="flex flex-wrap gap-2">
+          {options.map((o) => {
+            const on = sel.includes(o);
+            return (
+              <button
+                key={o}
+                type="button"
+                onClick={() => toggle(sel, set, o)}
+                className={`rounded-full border px-3 py-1 font-mono text-xs transition ${on ? "border-accent/50 bg-accent/15 text-accent" : "border-white/[0.12] text-neutral-400 hover:border-white/25"}`}
+              >
+                {on ? "selected " : ""}
+                {o}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function McpSection() {
   const [creating, setCreating] = useState(false);
   const [selected, setSelected] = useState<FabricMcpServer | null>(null);
@@ -400,35 +448,6 @@ function CreateMcpForm({ onDone, onCancel }: { onDone: () => void; onCancel: () 
       .then((rows) => setWfOptions(rows.map((w) => w.slug).filter(Boolean) as string[]))
       .catch(() => {});
   }, []);
-
-  const toggle = (arr: string[], set: (v: string[]) => void, v: string) =>
-    set(arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v]);
-
-  const Pick = ({ label, options, sel, set }: { label: string; options: string[]; sel: string[]; set: (v: string[]) => void }) => (
-    <div className="space-y-2">
-      <p className="text-sm font-semibold text-white">{label}</p>
-      {options.length === 0 ? (
-        <p className="text-xs text-neutral-500">none published yet</p>
-      ) : (
-        <div className="flex flex-wrap gap-2">
-          {options.map((o) => {
-            const on = sel.includes(o);
-            return (
-              <button
-                key={o}
-                type="button"
-                onClick={() => toggle(sel, set, o)}
-                className={`rounded-full border px-3 py-1 font-mono text-xs transition ${on ? "border-accent/50 bg-accent/15 text-accent" : "border-white/[0.12] text-neutral-400 hover:border-white/25"}`}
-              >
-                {on ? "selected " : ""}
-                {o}
-              </button>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
 
   const submit = async () => {
     setBusy(true);

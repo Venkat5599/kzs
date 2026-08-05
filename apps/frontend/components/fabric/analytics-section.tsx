@@ -153,9 +153,15 @@ export function AnalyticsSection() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setErr(null);
+  /**
+   * Fetch everything the panel shows, once, on mount.
+   *
+   * No `setLoading(true)` / `setErr(null)` prologue: `loading` already starts
+   * `true` and `err` already starts `null`, and nothing re-invokes this, so
+   * resetting them would set state synchronously inside an effect to the values
+   * it already holds — a cascading render that buys nothing.
+   */
+  const fetchAll = useCallback(async () => {
     try {
       const [s, nox, r, l] = await Promise.all([
         getFabricStats().catch(() => null),
@@ -195,8 +201,8 @@ export function AnalyticsSection() {
   }, []);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    void fetchAll();
+  }, [fetchAll]);
 
   const settled = points.reduce((sum, p) => sum + p.totalWei, 0);
   const payments = points.reduce((sum, p) => sum + p.count, 0);

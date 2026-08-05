@@ -1,0 +1,14 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": { "types": ["node"] },
+  // The generated `artifacts/**/artifacts.d.ts` files augment Hardhat's
+  // `ArtifactMap`. Without them in the program every `deployContract(...)`
+  // resolves to an untyped contract and every `.read`/`.write` call reads as
+  // `possibly undefined`.
+  "include": [
+    "script/**/*.ts",
+    "test/**/*.ts",
+    "hardhat.config.ts",
+    "artifacts/**/*.d.ts"
+  ]
+}

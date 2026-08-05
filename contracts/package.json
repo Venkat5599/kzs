@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "prettier --check 'src/**/*.sol'",
     "deploy:sepolia": "hardhat run script/deploy.ts --network sepolia",
+    "verify:sepolia": "bun script/verify.ts",
     "prove:live": "bun script/prove-live.ts",
     "prove:flush": "bun script/prove-flush.ts",
     "prove:stealth": "bun script/prove-stealth.ts",

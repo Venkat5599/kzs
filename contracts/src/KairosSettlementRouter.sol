@@ -145,7 +145,16 @@ contract KairosSettlementRouter {
         address stealthRecipient
     ) external onlyOwner returns (uint256 amountOut) {
         if (stealthRecipient == address(0)) revert InvalidRecipient();
-        return _route(epochId, tokenIn, tokenOut, poolFee, amountOutMinimum, deadline, stealthRecipient);
+        return
+            _route(
+                epochId,
+                tokenIn,
+                tokenOut,
+                poolFee,
+                amountOutMinimum,
+                deadline,
+                stealthRecipient
+            );
     }
 
     function _route(

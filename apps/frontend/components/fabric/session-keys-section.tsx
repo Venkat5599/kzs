@@ -10,10 +10,10 @@ export function SessionKeysSection() {
   const [maxSpend, setMaxSpend] = useState("5000000000");
   const [busy, setBusy] = useState(false);
 
-  async function load() {
-    const res = await fetch(`${gatewayUrl}/auth/session-keys`);
-    const body = await res.json();
-    setKeys(body.keys ?? []);
+  function load(): Promise<void> {
+    return fetch(`${gatewayUrl}/auth/session-keys`)
+      .then((res) => res.json())
+      .then((body) => setKeys(body.keys ?? []));
   }
 
   useEffect(() => {

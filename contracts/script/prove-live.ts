@@ -22,7 +22,14 @@
  *   bun run --cwd contracts prove:live
  */
 
-import { createWalletClient, createPublicClient, http, parseAbi, decodeEventLog } from "viem";
+import {
+  createWalletClient,
+  createPublicClient,
+  http,
+  parseAbi,
+  parseAbiItem,
+  decodeEventLog,
+} from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { sepolia } from "viem/chains";
 import { createViemHandleClient } from "@iexec-nox/handle";
@@ -91,14 +98,20 @@ function check(label: string, actual: unknown, expected: unknown): void {
  * way into serving. See docs/adr/002.
  */
 async function decryptWithRetry(
-  handleClient: { decrypt: (h: `0x${string}`) => Promise<{ value: bigint }> },
+  // The Handle Gateway types its result as a `JsValue`, which for a uint256 is a
+  // bigint or its decimal string depending on transport. Narrowing the parameter
+  // to `bigint` here would be a claim about the SDK that the SDK does not make,
+  // so take it as `unknown` and coerce — the same thing the production client
+  // does at packages/confidential/src/client.ts:188.
+  handleClient: { decrypt: (h: `0x${string}`) => Promise<{ value: unknown }> },
   handle: `0x${string}`,
   attempts = 8,
 ): Promise<bigint> {
   let lastError: unknown;
   for (let i = 0; i < attempts; i += 1) {
     try {
-      return (await handleClient.decrypt(handle)).value;
+      const { value } = await handleClient.decrypt(handle);
+      return BigInt(value as string | number | bigint);
     } catch (e) {
       lastError = e;
       await new Promise((r) => setTimeout(r, 3000));
@@ -252,7 +265,7 @@ async function main(): Promise<void> {
   {
     const logs = await publicClient.getLogs({
       address: VAULT,
-      event: vaultAbi.find((e) => e.type === "event" && e.name === "Settled") as never,
+      event: parseAbiItem("event Settled(uint64 indexed epoch)"),
       // Public RPCs reject `earliest` as an archive request, and we only care
       // about the settlements this run just produced.
       fromBlock: (await publicClient.getBlockNumber()) - 50n,

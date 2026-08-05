@@ -55,7 +55,11 @@ contract StealthAnnouncer {
     );
 
     /// @notice A recipient published or rotated their meta-address.
-    event StealthMetaAddressSet(address indexed registrant, uint256 indexed schemeId, bytes metaAddress);
+    event StealthMetaAddressSet(
+        address indexed registrant,
+        uint256 indexed schemeId,
+        bytes metaAddress
+    );
 
     error InvalidEphemeralKey();
     error InvalidMetaAddress();

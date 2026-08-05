@@ -5,7 +5,7 @@ import { Action } from "@/components/action";
 import { siteConfig } from "@/lib/config";
 import { AnimatePresence, motion } from "motion/react";
 import Link from "next/link";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 /**
  * The nav is built from the page's own unit rather than laid out as the stock
@@ -29,6 +29,13 @@ const LINKS = [
   { label: "How it moves", href: "#path", id: "path" },
   { label: "Verify", href: "#verify", id: "verify" },
 ];
+
+/**
+ * Hoisted rather than derived per render. The array only ever needs a stable
+ * identity, which a module constant gives for free — reading it back out of a
+ * ref during render was the same thing done less safely.
+ */
+const LINK_IDS = LINKS.map((l) => l.id);
 
 const ease = [0.23, 1, 0.32, 1] as const;
 
@@ -79,8 +86,7 @@ function Hamburger({ open }: { open: boolean }): ReactNode {
 
 export function Header(): ReactNode {
   const [open, setOpen] = useState(false);
-  const ids = useRef(LINKS.map((l) => l.id)).current;
-  const active = useActiveSection(ids);
+  const active = useActiveSection(LINK_IDS);
 
   return (
     <header className="relative z-50 bg-surface">

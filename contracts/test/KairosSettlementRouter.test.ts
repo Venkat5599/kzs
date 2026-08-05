@@ -36,8 +36,17 @@ function revertsWith(pattern: RegExp) {
 const notOwner = revertsWith(new RegExp(`NotOwner|${NOT_OWNER_SELECTOR}`));
 
 async function deploy() {
-  const { viem } = await network.connect();
+  // `create`, not `getOrCreate`: this runs in `beforeEach` and every test needs a
+  // chain of its own. A shared connection would carry routed epochs between
+  // tests, and "refuses to route the same epoch twice" would pass for the wrong
+  // reason.
+  const { viem } = await network.create();
+
   const [owner, outsider] = await viem.getWalletClients();
+  // Asserted once, here, so no call site below needs a non-null assertion. A
+  // configuration yielding fewer than two accounts would otherwise surface as an
+  // unrelated failure deep inside a test.
+  if (!owner || !outsider) throw new Error("expected at least two wallet clients");
 
   const tokenIn = await viem.deployContract("MockERC20", ["USD Coin", "USDC", 6]);
   const tokenOut = await viem.deployContract("MockERC20", ["Wrapped Ether", "WETH", 18]);
