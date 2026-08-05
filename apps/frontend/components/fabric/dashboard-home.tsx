@@ -4,27 +4,20 @@ import { useEffect, useState, type ReactNode } from "react";
 import {
   Layers,
   Activity,
-  Check,
   CheckCircle2,
   DollarSign,
-  KeyRound,
   Store,
   Server,
   Workflow,
   Clock,
-  Wallet,
-  Eye,
-  EyeOff,
 } from "lucide-react";
-import { Panel, CopyBtn, ETH, short } from "./ui";
+import { Panel } from "./ui";
 import {
   getFabricActivity,
   getFabricLogs,
   getFabricStats,
   getChainStatus,
-  getFabricWalletStatus,
   listSkills,
-  provisionFabricSession,
   gatewayUrl,
   type SkillSummary,
 } from "@/lib/api";
@@ -51,59 +44,6 @@ function Stat({ icon: Icon, label, value, sub }: { icon: typeof Layers; label: s
  * option. The marker is a number until the step is finished, then a check —
  * so progress is legible without relying on colour alone.
  */
-function FlowStep({
-  n,
-  state,
-  title,
-  detail,
-}: {
-  n: number;
-  state: "done" | "active" | "waiting";
-  title: string;
-  detail: string;
-}) {
-  const done = state === "done";
-  const active = state === "active";
-  return (
-    <li
-      className={`flex items-start gap-3 rounded-xl p-4 transition-colors duration-300 ${
-        active
-          ? "bg-white/[0.05] shadow-[inset_0_1px_0_rgba(255,255,255,0.09)]"
-          : "bg-white/[0.02] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
-      }`}
-    >
-      <span
-        aria-hidden
-        className={`mt-px flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold ${
-          done
-            ? "bg-accent/[0.16] text-accent"
-            : active
-              ? "bg-white/[0.12] text-white"
-              : "bg-white/[0.05] text-neutral-600"
-        }`}
-      >
-        {done ? <Check className="h-3 w-3" strokeWidth={2.5} /> : n}
-      </span>
-      <div className="min-w-0">
-        <p
-          className={`text-sm font-semibold ${
-            state === "waiting" ? "text-neutral-500" : "text-white"
-          }`}
-        >
-          {title}
-        </p>
-        <p
-          className={`mt-0.5 text-sm ${
-            state === "waiting" ? "text-neutral-600" : "text-neutral-400"
-          } ${done ? "font-mono text-xs" : ""}`}
-        >
-          {detail}
-        </p>
-      </div>
-    </li>
-  );
-}
-
 export function DashboardHome({
   go,
 }: {
@@ -114,13 +54,7 @@ export function DashboardHome({
   const [period, setPeriod] = useState("all");
   const [chain, setChain] = useState("testnet");
   const [skills, setSkills] = useState<SkillSummary[] | null>(null);
-  const [wstat, setWstat] = useState<{ funded: boolean; ETH: string } | null>(null);
-  const [showSec, setShowSec] = useState(false);
-  const [prov, setProv] = useState<{ sessionId: string; token: string } | null>(null);
-  const [provBusy, setProvBusy] = useState(false);
-  const [capWei, setCapWei] = useState("5000000000");
-  const [agentKey, setAgentKey] = useState("");
-  const { address, secret, real, connecting, connect, generate, disconnect } = useWallet();
+  const { address } = useWallet();
 
   useEffect(() => {
     getFabricStats(address ?? undefined)
@@ -129,31 +63,6 @@ export function DashboardHome({
     getFabricActivity().then(setAct).catch(() => setAct([]));
     getChainStatus().then((c) => setChain(c.configured ? c.network : "unconfigured")).catch(() => {});
     listSkills().then(setSkills).catch(() => setSkills([]));
-    // Deferred through a microtask so the write does not land synchronously in
-    // the effect pass. Reading localStorage during render is not an option —
-    // the server has no such value and the two trees would not match.
-    Promise.resolve()
-      .then(() => {
-        const t = localStorage.getItem("kairos_session_token");
-        const sid = localStorage.getItem("kairos_session_id");
-        if (t && sid) setProv({ token: t, sessionId: sid });
-      })
-      .catch(() => null);
-  }, [address]);
-
-  useEffect(() => {
-    // Clearing first matters: without it the previous wallet's balance stays on
-    // screen while the new one loads, attributed to the wrong address. Deferred
-    // by a microtask so it is not a synchronous write in the effect pass.
-    Promise.resolve()
-      .then(() => {
-        setWstat(null);
-        if (!address) return;
-        return getFabricWalletStatus(address).then((d) =>
-          setWstat(d.ok ? { funded: Boolean(d.funded), ETH: d.ETH ?? "0" } : null),
-        );
-      })
-      .catch(() => setWstat(null));
   }, [address]);
 
   const TOGGLE = [
@@ -162,37 +71,6 @@ export function DashboardHome({
     { k: "7d", label: "Last 7 Days" },
   ];
   const t = s?.totals;
-  const sess = s?.session;
-  const cap = sess?.cap ? Number(sess.cap) : null;
-  const remaining = sess?.remaining ? Number(sess.remaining) : null;
-  const pct = cap && remaining != null ? Math.max(0, Math.min(100, (remaining / cap) * 100)) : null;
-
-  const provision = async () => {
-    const pk = agentKey.trim() || address;
-    if (!pk) return;
-    setProvBusy(true);
-    try {
-      const d = await provisionFabricSession({
-        agentPublicKeyHex: pk,
-        scope: {
-          maxSpendPerCall: String(Math.max(1, Math.round(Number(capWei || "0")))),
-          expiresAt: new Date(Date.now() + 7 * 86_400_000).toISOString(),
-        },
-      });
-      if (d.ok) {
-        setProv({ sessionId: d.sessionId, token: d.token });
-        localStorage.setItem("kairos_session_token", d.token);
-        localStorage.setItem("kairos_session_id", d.sessionId);
-        getFabricStats().then(setS).catch(() => {});
-      } else {
-        alert(`Provision failed: ${d.error}`);
-      }
-    } catch (e) {
-      alert(`Provision failed: ${String((e as Error).message)}`);
-    } finally {
-      setProvBusy(false);
-    }
-  };
 
   return (
     <div className="space-y-6">
@@ -232,201 +110,6 @@ export function DashboardHome({
         <Stat icon={DollarSign} label="Total Earnings" value={t?.earnings ?? "—"} sub="ETH wei earned" />
       </div>
 
-      <Panel>
-        <div className="flex items-center gap-2">
-          <KeyRound className="h-5 w-5 text-accent" />
-          <p className="text-lg font-semibold text-white">x402 Payments</p>
-          {sess?.live && (
-            <span className="ml-1 inline-flex items-center gap-1 rounded-md bg-accent/[0.08] px-2 py-0.5 text-[11px] font-medium text-accent/90 shadow-[inset_0_0_0_1px_rgba(163,230,53,0.15)]">
-              live
-            </span>
-          )}
-        </div>
-        <p className="mt-1 text-sm text-neutral-500">Scoped session keys for automated, metered agent payments on Sepolia.</p>
-
-        {/* Where you actually are, in order.
-            This card used to open with an explainer panel repeating the line
-            above it, then offer four buttons at once across two rows with
-            nothing to say which came first. Getting an agent paying is a
-            two-step sequence, so it is shown as one: each step reports its own
-            state, and only the step you are on carries an action. */}
-        <ol className="mt-5 flex flex-col gap-2">
-          <FlowStep
-            n={1}
-            state={address ? "done" : "active"}
-            title={address ? "Wallet connected" : "Connect a wallet"}
-            detail={
-              address
-                ? `${short(address, 8, 6)} · ${
-                    wstat === null
-                      ? "checking balance…"
-                      : wstat.funded
-                        ? `${wstat.ETH} ETH`
-                        : "unfunded — use the faucet"
-                  }${real ? " · Sepolia" : ""}`
-                : "Generate a scoped session wallet, or connect one you already control."
-            }
-          />
-          <FlowStep
-            n={2}
-            state={prov ? "done" : address ? "active" : "waiting"}
-            title={prov ? "Session key live" : "Provision a session key"}
-            detail={
-              prov
-                ? "Capped per call and revocable on-chain."
-                : "Your agent pays through a scoped, revocable key — your owner key is never handed over."
-            }
-          />
-        </ol>
-
-        {secret && (
-          <div className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/5 p-4">
-            <p className="text-sm font-medium text-amber-200">Save your secret key — shown once</p>
-            <p className="mt-1 text-xs text-neutral-500">Import into Sepolia Wallet, then fund via the testnet faucet.</p>
-            <div className="mt-3 flex items-center gap-2">
-              <code className="flex-1 overflow-x-auto rounded-lg bg-black/40 px-3 py-2 font-mono text-xs text-neutral-300">
-                {showSec ? secret : "•".repeat(56)}
-              </code>
-              <button type="button" onClick={() => setShowSec((v) => !v)} className="text-neutral-400 hover:text-white">
-                {showSec ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
-              <CopyBtn text={secret} />
-            </div>
-            <a
-              href="https://www.alchemy.com/faucets/ethereum-sepolia"
-              target="_blank"
-              rel="noreferrer"
-              className="mt-3 inline-block text-xs text-accent underline underline-offset-2"
-            >
-              Fund on testnet faucet →
-            </a>
-          </div>
-        )}
-
-        {!address ? (
-          <div className="mt-4 flex flex-wrap gap-2">
-            <button
-              onClick={() => generate()}
-              disabled={connecting}
-              className="inline-flex items-center gap-2 rounded-xl bg-white/[0.09] px-4 py-3 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_1px_2px_rgba(0,0,0,0.5)] transition-[background-color,color] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] hover:bg-accent/[0.16] hover:text-accent disabled:opacity-40"
-            >
-              <Wallet className="h-4 w-4" />
-              {connecting ? "Generating…" : "Generate Session Wallet"}
-            </button>
-            <button
-              onClick={() => connect()}
-              disabled={connecting}
-              className="inline-flex items-center gap-2 rounded-xl bg-white/[0.03] px-4 py-3 text-sm font-medium text-neutral-300 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] transition-colors duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] hover:bg-white/[0.06] hover:text-white"
-            >
-              Connect Sepolia Wallet
-            </button>
-          </div>
-        ) : (
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <div className="rounded-xl bg-white/[0.03] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
-              <p className="text-xs text-neutral-500">Your wallet balance</p>
-              <p className="mt-1 text-2xl font-semibold text-white">
-                {wstat === null ? "—" : `${wstat.ETH} ETH`}
-              </p>
-              <p className="text-xs text-neutral-600">{wstat?.funded ? "funded on testnet" : "fund via faucet"}</p>
-            </div>
-            <div className="rounded-xl bg-white/[0.03] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
-              <p className="text-xs text-neutral-500">
-                Demo agent session {sess?.live && "· live"}
-              </p>
-              <p className="mt-1 text-2xl font-semibold text-white">{remaining != null ? ETH(remaining) : "—"}</p>
-              <p className="text-xs text-neutral-600">
-                of {cap != null ? ETH(cap) : "—"} cap · shared demo
-              </p>
-              {pct != null && (
-                <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/[0.08]">
-                  <div className="h-full rounded-full bg-accent transition-all" style={{ width: `${pct}%` }} />
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {address && !secret && !prov && (
-          <div className="mt-4 rounded-xl bg-white/[0.02] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] text-sm text-neutral-400">
-            External wallet connected — provision a scoped session key for your agent below, or generate a session wallet to
-            manage keys locally.
-            <div className="mt-3 flex flex-wrap gap-2">
-              <button
-                onClick={() => generate()}
-                disabled={connecting}
-                className="rounded-xl bg-white/[0.04] px-3 py-2 text-xs font-medium text-neutral-300 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] transition-colors duration-300 hover:bg-white/[0.07] hover:text-white"
-              >
-                Generate session wallet
-              </button>
-              <button onClick={disconnect} className="rounded-xl px-3 py-2 text-xs text-neutral-500 underline">
-                Disconnect
-              </button>
-            </div>
-          </div>
-        )}
-
-        {address && (
-          <div className="mt-4">
-            {prov ? (
-              <div className="rounded-xl bg-accent/[0.05] p-4 shadow-[inset_0_0_0_1px_rgba(163,230,53,0.14)]">
-                <p className="font-semibold text-white">Your session key is live</p>
-                <p className="mt-1 font-mono text-xs text-neutral-500">{prov.sessionId}</p>
-                <p className="mt-3 text-sm text-neutral-400">Personal agent token — use as Bearer when settling through your session:</p>
-                <div className="mt-2 flex items-center gap-2 rounded-lg bg-black/40 px-3 py-2 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]">
-                  <span className="flex-1 truncate font-mono text-xs text-white">{prov.token}</span>
-                  <CopyBtn text={prov.token} />
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setProv(null);
-                    localStorage.removeItem("kairos_session_token");
-                    localStorage.removeItem("kairos_session_id");
-                  }}
-                  className="mt-3 text-xs text-neutral-500 underline underline-offset-2 hover:text-neutral-300"
-                >
-                  Provision a new session (different limits)
-                </button>
-              </div>
-            ) : (
-              <div className="rounded-xl bg-white/[0.02] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
-                <p className="text-sm text-neutral-400">
-                  Mint a scoped session key for agent <span className="font-mono text-neutral-300">{short(address, 6, 4)}</span> — capped per call on Sepolia.
-                </p>
-                <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                  <label className="block text-sm">
-                    <span className="text-neutral-500">Agent public key (optional)</span>
-                    <input
-                      value={agentKey}
-                      onChange={(e) => setAgentKey(e.target.value)}
-                      placeholder="defaults to your wallet"
-                      className="mt-1 w-full rounded-lg bg-black/40 px-3 py-2 font-mono text-sm text-white outline-none shadow-[inset_0_1px_2px_rgba(0,0,0,0.6),inset_0_0_0_1px_rgba(255,255,255,0.06)] transition-shadow duration-300 focus:shadow-[inset_0_1px_2px_rgba(0,0,0,0.6),inset_0_0_0_1px_rgba(163,230,53,0.35)]"
-                    />
-                  </label>
-                  <label className="block text-sm">
-                    <span className="text-neutral-500">Spend cap (wei per call)</span>
-                    <input
-                      value={capWei}
-                      onChange={(e) => setCapWei(e.target.value)}
-                      className="mt-1 w-full rounded-lg bg-black/40 px-3 py-2 font-mono text-sm text-white outline-none shadow-[inset_0_1px_2px_rgba(0,0,0,0.6),inset_0_0_0_1px_rgba(255,255,255,0.06)] transition-shadow duration-300 focus:shadow-[inset_0_1px_2px_rgba(0,0,0,0.6),inset_0_0_0_1px_rgba(163,230,53,0.35)]"
-                    />
-                  </label>
-                </div>
-                <button
-                  onClick={provision}
-                  disabled={provBusy}
-                  className="mt-4 inline-flex items-center gap-2 rounded-xl bg-white/[0.09] px-4 py-3 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_1px_2px_rgba(0,0,0,0.5)] transition-[background-color,color] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] hover:bg-accent/[0.16] hover:text-accent disabled:opacity-40"
-                >
-                  <KeyRound className="h-4 w-4" />
-                  {provBusy ? "Provisioning…" : "Provision Session Key"}
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-
-      </Panel>
 
       <div>
         <p className="mb-3 text-sm font-semibold uppercase tracking-wider text-neutral-500">Manage</p>
