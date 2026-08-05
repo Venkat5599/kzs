@@ -19,7 +19,8 @@
     "test": "bun run test:unit && bun run test:contracts",
     "test:unit": "bun test packages services apps",
     "test:contracts": "bun run --cwd contracts test",
-    "deploy:vercel": "bash scripts/deploy-vercel.sh"
+    "deploy:vercel": "bash scripts/deploy-vercel.sh",
+    "seed:demo": "bun scripts/seed-demo.ts"
   },
   "engines": {
     "bun": ">=1.1.0"
