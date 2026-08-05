@@ -1,0 +1,21 @@
+{
+  "name": "@kairos/payments",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "x402 payments — quote issuance, TTL-bounded quote memory, and payment verification against quoted terms.",
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "echo 'no build step'",
+    "typecheck": "tsc --noEmit",
+    "lint": "echo 'no lint configured'",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@kairos/authz": "workspace:*",
+    "@kairos/shared": "workspace:*"
+  }
+}

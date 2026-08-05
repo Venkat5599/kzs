@@ -1,0 +1,21 @@
+{
+  "name": "@kairos/execution",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Workflow execution — run validated graphs with injected step handlers, record traces, enforce budgets.",
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "echo 'no build step'",
+    "typecheck": "tsc --noEmit",
+    "lint": "echo 'no lint configured'",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@kairos/shared": "workspace:*",
+    "@kairos/workflow": "workspace:*"
+  }
+}
