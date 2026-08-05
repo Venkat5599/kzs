@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { Plus, ArrowLeft, Store, Loader2, Terminal, Search, Zap, Trash2 } from "lucide-react";
 import { Panel, Field, Input, Textarea, Button, Toggle, Chip, Empty, short, CopyBtn } from "./ui";
 import { useWallet } from "@/lib/wallet";
@@ -47,13 +47,16 @@ export function ApisSection() {
   const [q, setQ] = useState("");
   const { address } = useWallet();
 
-  const load = () =>
-    listFabricApis(address ?? undefined)
-      .then(setApis)
-      .catch(() => setApis([]));
+  const load = useCallback(
+    () =>
+      listFabricApis(address ?? undefined)
+        .then(setApis)
+        .catch(() => setApis([])),
+    [address],
+  );
   useEffect(() => {
     load();
-  }, [address]);
+  }, [load]);
 
   if (creating) return <CreateApiForm onDone={() => { setCreating(false); load(); }} onCancel={() => setCreating(false)} />;
   if (selected) return <ApiDetail api={selected} onBack={() => setSelected(null)} />;
@@ -88,7 +91,7 @@ export function ApisSection() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">
           {filtered.map((a) => (
-            <button key={a.id} type="button" onClick={() => setSelected(a)} className="text-left">
+            <button key={a.id ?? a.slug} type="button" onClick={() => setSelected(a)} className="text-left">
               <Panel className="h-full cursor-pointer transition hover:border-accent/40">
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent/10">

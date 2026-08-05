@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { Plus, ArrowLeft, Server, Loader2, Search, Wrench, Workflow, Check, X } from "lucide-react";
 import { Panel, Field, Input, Textarea, Button, Empty, short, Chip, CopyBtn } from "./ui";
 import { useWallet } from "@/lib/wallet";
@@ -189,13 +189,16 @@ export function McpSection() {
   const [q, setQ] = useState("");
   const { address } = useWallet();
 
-  const load = () =>
-    listFabricMcpServers(address ?? undefined)
-      .then(setServers)
-      .catch(() => setServers([]));
+  const load = useCallback(
+    () =>
+      listFabricMcpServers(address ?? undefined)
+        .then(setServers)
+        .catch(() => setServers([])),
+    [address],
+  );
   useEffect(() => {
     load();
-  }, [address]);
+  }, [load]);
 
   if (creating) return <CreateMcpForm onDone={() => { setCreating(false); load(); }} onCancel={() => setCreating(false)} />;
   if (selected) return <McpDetail mcp={selected} onBack={() => setSelected(null)} />;
@@ -249,7 +252,9 @@ export function McpSection() {
                     <Workflow className="h-3.5 w-3.5" /> {(s.workflows ?? []).length} workflows
                   </span>
                 </div>
-                <p className="mt-2 text-[10px] text-neutral-600">Created {new Date(s.created_at).toLocaleDateString()}</p>
+                {s.created_at && (
+                  <p className="mt-2 text-[10px] text-neutral-600">Created {new Date(s.created_at).toLocaleDateString()}</p>
+                )}
               </Panel>
             </button>
           ))}
@@ -330,7 +335,7 @@ function McpDetail({ mcp, onBack }: { mcp: FabricMcpServer; onBack: () => void }
               const name = `api__${a.slug}`;
               const on = tools.includes(name);
               return (
-                <div key={a.id} className="flex items-center justify-between gap-3 rounded-xl border border-white/[0.08] p-3">
+                <div key={a.id ?? a.slug} className="flex items-center justify-between gap-3 rounded-xl border border-white/[0.08] p-3">
                   <div className="min-w-0">
                     <p className="font-medium text-white">{a.name}</p>
                     <p className="text-xs text-neutral-500">{a.description}</p>
@@ -398,7 +403,7 @@ function McpDetail({ mcp, onBack }: { mcp: FabricMcpServer; onBack: () => void }
           {wfs
             .filter((w) => w.slug && !workflows.includes(w.slug))
             .map((w) => (
-              <div key={w.id} className="flex items-center justify-between rounded-xl border border-white/[0.08] p-3">
+              <div key={w.id ?? w.slug} className="flex items-center justify-between rounded-xl border border-white/[0.08] p-3">
                 <div>
                   <p className="text-white">{w.name}</p>
                   <p className="text-xs text-neutral-500">{w.description}</p>
