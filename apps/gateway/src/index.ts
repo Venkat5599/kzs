@@ -1,4 +1,4 @@
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 import { cors } from "hono/cors";
 import { ConfidentialClient } from "@kairos/confidential";
 import {
@@ -368,8 +368,14 @@ app.get("/payments/usage", (c) => c.json({ items: store.activity() }));
 // binary-search the encrypted cap by sending payments and watching which shape
 // came back — defeating the branchless settle path entirely.
 
-app.post("/x402/skills/:slug", async (c) => {
-  const slug = c.req.param("slug");
+/**
+ * The quote-then-pay flow for a skill.
+ *
+ * Mounted at both the x402 spec path and the public `/s/:slug` path the
+ * catalogue shows in its curl examples — one contract, two spellings.
+ */
+const skillPayment = async (c: Context) => {
+  const slug = c.req.param("slug") ?? "";
   const skill = store.skill(slug);
   // A 404 before any payment consideration. Whether a skill exists is public —
   // it is in `GET /skills` — so this leaks nothing the catalogue does not.
@@ -450,6 +456,62 @@ app.post("/x402/skills/:slug", async (c) => {
     hash,
     ...(stealth ? { stealth } : {}),
   });
+};
+
+app.post("/x402/skills/:slug", skillPayment);
+app.post("/s/:slug", skillPayment);
+
+/**
+* Pay for a skill with the gateway's own relayer key, on behalf of the caller.
+*
+* This is the "auto-pay" leg of the catalogue: the caller got a quote from
+* `POST /s/:slug` (or `/x402/skills/:slug`), then spends it here by nonce. No
+* X-PAYMENT header is needed — the nonce is single-use, and the gateway funds
+* the settlement from its own registered agent, so the caller never handles
+* the relayer key. The response is identical to the paid path of
+* {@link skillPayment}: the same receipt, byte for byte.
+*/
+app.post("/s/:slug/auto-pay", async (c) => {
+const slug = c.req.param("slug");
+const skill = store.skill(slug);
+if (!skill) throw new KairosError("not_found", "Skill not found.");
+
+const body = await c.req
+  .json<{ nonce?: string; payTo?: string }>()
+  .catch(() => ({}) as { nonce?: string; payTo?: string });
+
+const payTo = confidential.relayerAddress;
+if (!payTo) throw new KairosError("misconfigured", "No payee: gateway is read-only and no payTo was given.");
+
+const requirements = claimQuote(body.nonce);
+if (!requirements) {
+  console.warn(`[x402] auto-pay: unknown, expired or replayed quote for ${slug}`);
+  const offer = quoteFor(skill, `/s/${slug}`, payTo);
+  rememberQuote(offer);
+  return c.json(quoteEnvelope(offer), 402);
+}
+
+const agent = payTo;
+const { hash, verdict } = await confidential.settle(agent, BigInt(requirements.maxAmountRequired));
+
+if (!mayServeResource(verdict)) {
+  if (verdict.outcome === "unreadable") {
+    console.warn(`[fail-closed] refused ${hash}: ${verdict.reason}`);
+  }
+  return c.json(quoteEnvelope(requirements), 402);
+}
+
+const payout = resolveStealthPayout(config, body.payTo);
+const stealth = payout ? await announceStealthPayout(confidential, payout) : null;
+
+c.header("X-PAYMENT-RESPONSE", receiptHeader(hash, agent));
+return c.json({
+  paid: true,
+  skill: { slug: skill.slug, name: skill.name },
+  amountWei: requirements.maxAmountRequired,
+  hash,
+  ...(stealth ? { stealth } : {}),
+});
 });
 
 // ============ stealth addresses ============
