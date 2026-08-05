@@ -1,0 +1,17 @@
+{
+  "name": "@kairos/chain",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Chain registry — the networks Kairos deploys on, their RPCs, explorers and Nox compute proxies.",
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "echo 'no build step'",
+    "typecheck": "tsc --noEmit",
+    "lint": "echo 'no lint configured'",
+    "test": "bun test"
+  }
+}

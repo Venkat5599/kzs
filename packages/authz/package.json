@@ -1,0 +1,24 @@
+{
+  "name": "@kairos/authz",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Authorization primitives — x402 payment envelopes and scoped session keys. Pure functions over plain values.",
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "echo 'no build step'",
+    "typecheck": "tsc --noEmit",
+    "lint": "echo 'no lint configured'",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@kairos/chain": "workspace:*",
+    "@kairos/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22"
+  }
+}

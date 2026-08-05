@@ -1,0 +1,23 @@
+{
+  "name": "@kairos/sdk",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "The typed Kairos client — catalogue, x402 payments, confidential vault and stealth payouts over the gateway API.",
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "echo 'no build step'",
+    "typecheck": "tsc --noEmit",
+    "lint": "echo 'no lint configured'",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@kairos/authz": "workspace:*",
+    "@kairos/chain": "workspace:*",
+    "@kairos/manifest": "workspace:*",
+    "@kairos/shared": "workspace:*"
+  }
+}
