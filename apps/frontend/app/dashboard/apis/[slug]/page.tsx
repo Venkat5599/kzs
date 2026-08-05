@@ -66,11 +66,11 @@ export default function InvokePage() {
       </Link>
       <div className="mt-6 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">{skill.manifest.name}</h1>
+          <h1 className="text-2xl font-bold">{skill.name}</h1>
           <p className="mt-1 font-mono text-sm text-muted-foreground">POST /s/{slug} · {unconfigured ? "chain unconfigured" : "Sepolia testnet"}</p>
         </div>
         <span className="rounded-full bg-accent/20 px-3 py-1 text-sm font-medium">
-          {skill.manifest.pricing.pricePerCall === "0" ? "Free" : `${skill.manifest.pricing.pricePerCall} wei`}
+          {skill.priceWei === "0" ? "Free" : `${skill.priceWei} wei`}
         </span>
       </div>
 
