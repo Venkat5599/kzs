@@ -94,8 +94,23 @@ plus 13/13 contract.
 
 ### 2. Yours, not code — needs a key this environment does not hold
 - [ ] **Rotate the deployer key** — it is in a chat transcript
-- [ ] Run the verification: `ETHERSCAN_API_KEY=… bun run --cwd contracts verify:sepolia`.
-      The script exists now; it has never been run, because no key is present here
+- [x] **Etherscan verification run (2026-08-05)** — 7/8 contracts verified:
+      KairosVault, KairosSettlementRouter, CapPolicy, VelocityPolicy,
+      AllowlistPolicy, CompositePolicy, StealthAnnouncer. All source-published;
+      every claim in the README is now checkable. The deploy-time values were
+      read from the chain, not guessed: vault relayer
+      `0xBfc9521F81C58388374DDd553bE4818ED5de0690`, `flushThreshold` = 3 (the
+      script's default of 25 would have failed the vault).
+- [ ] **KairosRingRegistry verification is unrecoverable from this repo.** The
+      deployed bytecode is byte-identical to the repo's compile except for the
+      embedded solc metadata hash (proven: 9785 identical bytes, only the
+      metadata differs) — the deploy-time compiler input differed in a
+      non-code way (an uncommitted node_modules/toolchain resolution state;
+      the deps are caret-ranged: `hardhat ^3.2.0`, `hardhat-toolbox-viem
+      ^5.0.3`, `@iexec-nox/handle ^0.1.0-beta`). Fix options for the owner:
+      (a) verify from the machine that ran `deploy:ring` (its build-info holds
+      the exact input), or (b) redeploy the registry from current source —
+      it takes no constructor args — and verify the new address.
 - [ ] Re-read the limitations sections; they must still be true
 
 ### 3. Known, and deliberately not fixed
