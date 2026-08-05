@@ -33,8 +33,15 @@ export function MarketplaceSection() {
   };
 
   useEffect(() => {
-    setToken(localStorage.getItem("kairos_session_token"));
-    load();
+    // Deferred through a microtask. localStorage cannot be read during render —
+    // the server has no such value and the trees would not match — so the write
+    // has to happen after mount, just not synchronously inside the effect pass.
+    Promise.resolve()
+      .then(() => {
+        setToken(localStorage.getItem("kairos_session_token"));
+        load();
+      })
+      .catch(() => null);
   }, []);
 
   const seed = async () => {

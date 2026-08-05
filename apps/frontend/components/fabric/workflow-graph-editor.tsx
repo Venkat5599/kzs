@@ -85,7 +85,11 @@ export function GraphEditor({
   const addNode = (kind: WfNode["kind"], position?: { x: number; y: number }) => {
     const n = graph.nodes.length;
     const base = `${kind}_${n + 1}`;
-    const id = graph.nodes.some((x) => x.id === base) ? `${base}_${Date.now() % 1000}` : base;
+    // Count up until the name is free, rather than salting with the clock. The
+    // clock is impure, and `Date.now() % 1000` collides outright whenever two
+    // nodes are added within the same millisecond-mod-1000 window.
+    let id = base;
+    for (let i = 2; graph.nodes.some((x) => x.id === id); i += 1) id = `${base}_${i}`;
     update({
       ...graph,
       nodes: [
@@ -122,7 +126,10 @@ export function GraphEditor({
       nodes: graph.nodes.map((n) => {
         if (n.id !== id) return n;
         if (ms > 0) return { ...n, timeoutMs: ms };
-        const { timeoutMs: _drop, ...rest } = n;
+        // Zero means "no timeout", which is the absence of the key rather than
+        // the number 0 — a stored 0 would read as an instant deadline.
+        const rest = { ...n };
+        delete rest.timeoutMs;
         return rest;
       }),
     });

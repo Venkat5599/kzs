@@ -104,7 +104,11 @@ export function CapPolicyBoard() {
   // Hydrate after mount. Reading localStorage during render would desync the
   // server-rendered HTML from the client tree.
   useEffect(() => {
-    setAgents(loadRoster());
+    // Deferred through a microtask, so the hydration is not a synchronous write
+    // inside the effect pass.
+    Promise.resolve()
+      .then(() => setAgents(loadRoster()))
+      .catch(() => null);
   }, []);
 
   const persist = useCallback((next: Agent[]) => {

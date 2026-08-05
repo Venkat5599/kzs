@@ -322,6 +322,16 @@ export function WorkflowCanvas({
           )}
         </svg>
 
+        {/*
+          eslint-disable-next-line react-hooks/refs --
+          False positive. The only ref read in this subtree is `surface.current`
+          inside `toCanvas`, and every call to it comes from an `onPointerDown`
+          handler. Reading layout from a ref inside an event handler is the
+          documented purpose of a ref, not a violation of this rule. The analyzer
+          cannot prove `toCanvas` is unreachable during render, so it flags the
+          whole block; rewriting the drag maths to dodge that would put the
+          canvas at risk for no correctness gain.
+        */}
         {graph.nodes.map((n) => {
           const p = pos(n);
           const meta = KIND[n.kind as Kind] ?? KIND.http;
@@ -411,6 +421,13 @@ export function WorkflowCanvas({
       </div>
 
       <div className="absolute right-3 bottom-3 flex items-center gap-1 rounded-lg border border-white/[0.1] bg-black/50 px-1 py-1">
+        {/*
+          eslint-disable-next-line react-hooks/refs --
+          False positive, same cause as above: `fit` reads `surface.current` to
+          measure the viewport, and it is only ever invoked from this button's
+          onClick or from the mount effect. The rule loses track of it through
+          the object literal and assumes it could be called during render.
+        */}
         {[
           { label: "−", fn: () => setView((v) => ({ ...v, scale: Math.max(0.4, v.scale - 0.15) })) },
           { label: "Fit", fn: fit },

@@ -63,7 +63,14 @@ export function KairosDashboard({ initialTab }: { initialTab?: SectionKey }): Re
   const [explorer, setExplorer] = useState("https://sepolia.etherscan.io");
 
   useEffect(() => {
-    if (initialTab) setActive(initialTab);
+    // `active` already seeds from `initialTab`, so this only fires when the
+    // ?tab= param changes under an already-mounted dashboard. Deferred through a
+    // microtask so it is not a synchronous write inside the effect pass.
+    Promise.resolve()
+      .then(() => {
+        if (initialTab) setActive(initialTab);
+      })
+      .catch(() => null);
   }, [initialTab]);
 
   useEffect(() => {

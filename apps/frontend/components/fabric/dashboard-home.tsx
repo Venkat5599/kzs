@@ -129,19 +129,30 @@ export function DashboardHome({
     getFabricActivity().then(setAct).catch(() => setAct([]));
     getChainStatus().then((c) => setChain(c.configured ? c.network : "unconfigured")).catch(() => {});
     listSkills().then(setSkills).catch(() => setSkills([]));
-    const t = localStorage.getItem("kairos_session_token");
-    const sid = localStorage.getItem("kairos_session_id");
-    if (t && sid) setProv({ token: t, sessionId: sid });
+    // Deferred through a microtask so the write does not land synchronously in
+    // the effect pass. Reading localStorage during render is not an option —
+    // the server has no such value and the two trees would not match.
+    Promise.resolve()
+      .then(() => {
+        const t = localStorage.getItem("kairos_session_token");
+        const sid = localStorage.getItem("kairos_session_id");
+        if (t && sid) setProv({ token: t, sessionId: sid });
+      })
+      .catch(() => null);
   }, [address]);
 
   useEffect(() => {
-    if (!address) {
-      setWstat(null);
-      return;
-    }
-    setWstat(null);
-    getFabricWalletStatus(address)
-      .then((d) => setWstat(d.ok ? { funded: Boolean(d.funded), ETH: d.ETH ?? "0" } : null))
+    // Clearing first matters: without it the previous wallet's balance stays on
+    // screen while the new one loads, attributed to the wrong address. Deferred
+    // by a microtask so it is not a synchronous write in the effect pass.
+    Promise.resolve()
+      .then(() => {
+        setWstat(null);
+        if (!address) return;
+        return getFabricWalletStatus(address).then((d) =>
+          setWstat(d.ok ? { funded: Boolean(d.funded), ETH: d.ETH ?? "0" } : null),
+        );
+      })
       .catch(() => setWstat(null));
   }, [address]);
 
@@ -491,8 +502,14 @@ export function DashboardHome({
 function RequestLogs({ period }: { period: string }) {
   const [data, setData] = useState<Awaited<ReturnType<typeof getFabricLogs>> | null>(null);
   useEffect(() => {
-    setData(null);
-    getFabricLogs(period).then(setData).catch(() => setData({ logs: [], stats: null }));
+    // Clear then refetch, so the previous period's rows do not sit under the new
+    // period's heading. Deferred for the same reason as the effects above.
+    Promise.resolve()
+      .then(() => {
+        setData(null);
+        return getFabricLogs(period).then(setData);
+      })
+      .catch(() => setData({ logs: [], stats: null }));
   }, [period]);
 
   return (

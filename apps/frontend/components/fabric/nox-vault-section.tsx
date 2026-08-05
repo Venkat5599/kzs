@@ -134,7 +134,11 @@ export function NoxVaultSection() {
   }, []);
 
   useEffect(() => {
-    void refresh();
+    // Deferred through a microtask so `refresh`'s first state write is not a
+    // synchronous one inside the effect pass.
+    Promise.resolve()
+      .then(() => refresh())
+      .catch(() => null);
   }, [refresh]);
 
   const run = async (key: string, fn: () => Promise<void>) => {

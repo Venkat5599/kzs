@@ -201,7 +201,13 @@ export function AnalyticsSection() {
   }, []);
 
   useEffect(() => {
-    void fetchAll();
+    // Deferred through a microtask so the first state write lands in a promise
+    // callback rather than synchronously in the effect body. Same reason the
+    // chain form is used elsewhere: a synchronous setState here is a guaranteed
+    // second render pass before the browser has painted the first.
+    Promise.resolve()
+      .then(() => fetchAll())
+      .catch(() => null);
   }, [fetchAll]);
 
   const settled = points.reduce((sum, p) => sum + p.totalWei, 0);
