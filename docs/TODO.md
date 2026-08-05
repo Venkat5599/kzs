@@ -121,10 +121,19 @@ plus 13/13 contract.
       `bun run lint` is now 0 errors, 0 warnings in every workspace.
 
 ### 4. Nice to have, not needed to submit
-- [ ] `packages/{chain,authz,manifest,workflow,sdk}` — only `shared` and
-      `confidential` exist
-- [ ] `services/*` — the gateway catalogue is in-process and resets on restart,
-      and so are outstanding x402 quotes
+- [x] `packages/{chain,manifest,authz,workflow,sdk}` — all five now exist, real
+      and tested (52 new tests): chain registry (incl. Nox compute proxies),
+      skill manifests, x402 envelope + session-scope rules, the workflow graph
+      engine, and the typed public client
+- [x] `services/{catalog,payments,identity,execution}` — catalogue persistence
+      (JSON-file backing, atomic writes, survives restarts), x402 quote
+      service, HMAC-signed scoped session keys, and the workflow executor
+- [x] Gateway wired: `CATALOG_STORE_FILE` makes the catalogue persistent;
+      `POST /fabric/run/workflow` now actually runs workflows (the frontend's
+      run path previously 404'd) with bounded http/transform handlers, and
+      `/fabric/runs` supports `?workflow=` + `?limit=` plus `/fabric/runs/:id`
+- [ ] (optional follow-up) a Run button in the workflow editor UI — the API
+      and SDK path exist; the canvas currently only lists past runs
 
 ---
 

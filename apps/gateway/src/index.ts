@@ -15,6 +15,8 @@ import { loadConfig } from "./config.js";
 import { store } from "./store.js";
 import { handleMcp } from "./mcp.js";
 import { announceStealthPayout, resolveStealthPayout } from "./stealth.js";
+import { createExecutionService } from "@kairos/execution";
+import { resolveValue, type WorkflowGraph } from "@kairos/workflow";
 import {
   claimQuote,
   decodePaymentHeader,
@@ -205,8 +207,80 @@ app.get("/skills/:slug", (c) => {
 app.get("/fabric/apis", (c) => c.json({ apis: store.skills() }));
 app.get("/fabric/workflows", (c) => c.json({ workflows: store.workflows() }));
 app.get("/fabric/mcp-servers", (c) => c.json({ servers: store.mcpServers() }));
-app.get("/fabric/runs", (c) => c.json({ runs: store.runs() }));
+app.get("/fabric/runs", (c) => {
+  const workflow = c.req.query("workflow");
+  const limitRaw = Number(c.req.query("limit") ?? "20");
+  const limit = Number.isFinite(limitRaw) && limitRaw > 0 ? limitRaw : 20;
+  let runs = store.runs();
+  if (workflow) runs = runs.filter((r) => (r as { workflow?: string }).workflow === workflow);
+  return c.json({ runs: runs.slice(0, limit) });
+});
+app.get("/fabric/runs/:id", (c) => {
+  const run = store.runs().find((r) => (r as { id?: string }).id === c.req.param("id"));
+  if (!run) return c.json({ error: "run not found" }, 404);
+  return c.json(run);
+});
 app.get("/fabric/activity", (c) => c.json({ activity: store.activity() }));
+
+/**
+ * Run a workflow and record the trace.
+ *
+ * The executor is `@kairos/execution` over `@kairos/workflow` — validation and
+ * traversal live in the packages; this route only supplies the step handlers.
+ * HTTP nodes call out (bounded, 8s); transform nodes resolve `{{…}}` templates;
+ * onchain nodes have no handler here, so they are honestly reported as skipped
+ * rather than silently "succeeding".
+ */
+const executor = createExecutionService({
+  maxNodeExecutions: Number(process.env.WORKFLOW_MAX_NODE_EXECUTIONS ?? 500),
+  maxLoopItems: Number(process.env.WORKFLOW_MAX_LOOP_ITEMS ?? 100),
+  record: (run) => store.recordRun(run),
+});
+
+app.post("/fabric/run/workflow", async (c) => {
+  const body = (await c.req.json().catch(() => null)) as { slug?: string; input?: Record<string, unknown> } | null;
+  const slug = body?.slug;
+  if (!slug) return c.json({ ok: false, error: "slug is required" }, 400);
+  const wf = store.workflows().find((w) => w.slug === slug);
+  if (!wf) return c.json({ ok: false, error: "workflow not found" }, 404);
+
+  const result = await executor.run(
+    { slug: wf.slug, name: wf.name, graph: wf.graph as WorkflowGraph },
+    body.input ?? {},
+    {
+      http: async (node) => {
+        const cfg = node.config ?? {};
+        const url = String(cfg.url ?? "");
+        if (!/^https?:\/\//.test(url)) throw new Error(`http node has no usable url (${url || "empty"})`);
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 8000);
+        try {
+          const res = await fetch(url, {
+            method: String(cfg.method ?? "GET"),
+            headers: { "content-type": "application/json" },
+            signal: controller.signal,
+          });
+          const text = await res.text();
+          let data: unknown = text;
+          try {
+            data = text ? JSON.parse(text) : null;
+          } catch {
+            // keep the raw text as the body
+          }
+          return { status: res.status, body: data };
+        } finally {
+          clearTimeout(timer);
+        }
+      },
+      transform: async (node, ctx) => ({ value: resolveValue(node.config?.value, ctx) }),
+    },
+  );
+
+  if (!result.ok) {
+    return c.json({ ok: false, error: result.error.message }, (STATUS[result.error.code] ?? 500) as 500);
+  }
+  return c.json({ ok: true, run: result.value });
+});
 
 app.get("/fabric/logs", (c) => {
   const logs = store.activity();
