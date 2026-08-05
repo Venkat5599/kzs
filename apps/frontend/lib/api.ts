@@ -76,20 +76,35 @@ export interface ChainStatus {
 }
 
 export interface InvokeResult {
-  result: unknown;
-  payment?: { deployHash: string; explorerUrl?: string };
+  paid?: boolean;
+  skill?: { slug: string; name: string };
+  amountWei?: string;
+  hash?: string;
+  stealth?: unknown;
+  result?: unknown;
   usage?: unknown;
   runtimeMs?: number;
 }
 
+/**
+ * The x402 quote envelope the gateway answers 402 with — the spec shape,
+ * `accepts` carrying the terms. The old shape (`x402: true`, flat `price`)
+ * matched nothing the gateway actually sends.
+ */
 export interface X402Quote {
-  x402: true;
-  price: string;
-  asset: string;
-  recipient: string;
-  nonce: string;
-  expiresAt: string;
-  slug: string;
+  x402Version: number;
+  error: string;
+  accepts: Array<{
+    scheme: string;
+    network: string;
+    maxAmountRequired: string;
+    resource: string;
+    description: string;
+    mimeType: string;
+    payTo: string;
+    maxTimeoutSeconds: number;
+    extra: { nonce: string };
+  }>;
 }
 
 export interface PublishError {
@@ -135,7 +150,16 @@ export async function invokeSkill(slug: string, input: unknown) {
     headers: { "content-type": "application/json" },
     body: JSON.stringify(input),
   });
-  return { status: res.status, body: await res.json() };
+  // A non-JSON error body (a proxy 404, a plain-text refusal) must surface as
+  // text, not as a SyntaxError from the parse.
+  const text = await res.text();
+  let body: unknown = text;
+  try {
+    body = text ? JSON.parse(text) : null;
+  } catch {
+    // keep the raw text
+  }
+  return { status: res.status, body };
 }
 
 export async function autoPayInvoke(slug: string, input: unknown, nonce: string): Promise<InvokeResult> {
@@ -144,8 +168,17 @@ export async function autoPayInvoke(slug: string, input: unknown, nonce: string)
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ nonce, input }),
   });
-  const body = await res.json();
-  if (!res.ok) throw new Error((body as { error?: string }).error ?? "invoke failed");
+  const text = await res.text();
+  let body: unknown = text;
+  try {
+    body = text ? JSON.parse(text) : null;
+  } catch {
+    // keep the raw text
+  }
+  if (!res.ok) {
+    const err = body as { error?: string; message?: string } | null;
+    throw new Error(err?.message ?? err?.error ?? `invoke failed: ${res.status}`);
+  }
   return body as InvokeResult;
 }
 

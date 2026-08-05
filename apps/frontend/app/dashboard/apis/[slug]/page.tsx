@@ -4,7 +4,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ArrowLeft, Coins, ExternalLink, Loader2, Play } from "lucide-react";
-import { autoPayInvoke, gatewayUrl, getChainStatus, getSkill, invokeSkill, type SkillDetail, type X402Quote } from "@/lib/api";
+import { autoPayInvoke, gatewayUrl, getChainStatus, getSkill, invokeSkill, withExplorerTx, type SkillDetail, type X402Quote } from "@/lib/api";
 
 export default function InvokePage() {
   const params = useParams();
@@ -29,7 +29,12 @@ export default function InvokePage() {
     try {
       const parsed = JSON.parse(input);
       if (autoPay && quote) {
-        const res = await autoPayInvoke(slug, parsed, quote.nonce);
+        const nonce = quote.accepts[0]?.extra?.nonce;
+        if (!nonce) {
+          setError("quote carries no nonce — refresh and invoke again");
+          return;
+        }
+        const res = withExplorerTx(await autoPayInvoke(slug, parsed, nonce));
         setResult(JSON.stringify(res, null, 2));
         setQuote(null);
       } else {
@@ -53,7 +58,10 @@ export default function InvokePage() {
   const payment = (() => {
     if (!result) return undefined;
     try {
-      return (JSON.parse(result) as { payment?: { explorerUrl?: string } }).payment;
+      // The paid receipt carries the tx hash at the top level; withExplorerTx
+      // adds the explorerUrl. Only a real link is worth rendering.
+      const parsed = JSON.parse(result) as { explorerUrl?: string };
+      return parsed.explorerUrl ? { explorerUrl: parsed.explorerUrl } : undefined;
     } catch {
       return undefined;
     }
