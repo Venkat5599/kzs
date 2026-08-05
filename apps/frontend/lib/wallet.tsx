@@ -8,12 +8,7 @@ import {
   connectorsForWallets,
   useConnectModal,
 } from "@rainbow-me/rainbowkit";
-import {
-  injectedWallet,
-  metaMaskWallet,
-  rainbowWallet,
-  coinbaseWallet,
-} from "@rainbow-me/rainbowkit/wallets";
+import { injectedWallet } from "@rainbow-me/rainbowkit/wallets";
 import { createConfig, http } from "wagmi";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { WagmiProvider, useAccount, useChainId, useDisconnect, useSwitchChain } from "wagmi";
@@ -74,16 +69,18 @@ const wagmiConfig = WALLETCONNECT_PROJECT_ID
       chains: [sepolia],
       transports: { [sepolia.id]: http() },
       ssr: true,
+      // `injectedWallet` and nothing else, deliberately.
+      //
+      // wagmi's EIP-6963 discovery is on by default and already lists every
+      // installed wallet — MetaMask, OKX, Phantom, Rabby — each bound to its own
+      // provider, so each one actually opens. Adding RainbowKit's named
+      // `metaMaskWallet` / `rainbowWallet` / `coinbaseWallet` entries on top put a
+      // SECOND, broken "MetaMask" in that list: those connectors do not use
+      // EIP-6963, so with no WalletConnect project id they fall through to a
+      // WalletConnect request that never resolves, and the modal sits on
+      // "Opening MetaMask…" forever. Removing them leaves only entries that work.
       connectors: connectorsForWallets(
-        [
-          {
-            groupName: "Installed",
-            // injectedWallet first: it picks up whichever provider actually
-            // holds window.ethereum, which on a machine with several wallets
-            // is the one that will really open.
-            wallets: [injectedWallet, metaMaskWallet, rainbowWallet, coinbaseWallet],
-          },
-        ],
+        [{ groupName: "Installed", wallets: [injectedWallet] }],
         // projectId is required by the type but unused on the injected path.
         { appName: "Kairos", projectId: "injected-only" },
       ),
