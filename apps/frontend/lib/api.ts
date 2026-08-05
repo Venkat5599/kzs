@@ -29,8 +29,23 @@ const ABSOLUTE = (process.env.NEXT_PUBLIC_GATEWAY_URL ?? FALLBACK).replace(/\/+$
  */
 const BASE = typeof window === "undefined" ? ABSOLUTE : "/gw";
 
+/**
+ * The absolute gateway URL, for display and for commands a user copies out
+ * (curl lines, MCP connection strings, endpoints). It is a build-time constant
+ * — identical in the server and client bundles — so rendering it during SSR
+ * cannot cause the hydration mismatch that rendering the `/gw` proxy path did.
+ *
+ * Browser fetches must NOT use this (cross-origin → the CORS failure the proxy
+ * exists to avoid); they go through `apiBase` below.
+ */
+export const gatewayUrl = ABSOLUTE;
+
+/** Browser-safe base for fetches: the same-origin `/gw` proxy in the browser, the direct URL on the server. */
+export const apiBase = BASE;
+
 export interface SkillSummary {
-  id: string;
+  /** Absent on catalogue samples — they are slug-keyed. */
+  id?: string;
   slug: string;
   version: string;
   name: string;
@@ -40,24 +55,14 @@ export interface SkillSummary {
   createdAt: string;
 }
 
-export interface SkillManifest {
-  name: string;
-  version: string;
-  description: string;
-  runtime: "llm" | "code" | "hybrid";
-  pricing: { pricePerCall: string; asset: string };
-  inputSchema: Record<string, unknown>;
-  outputSchema: Record<string, unknown>;
-  tools?: string[];
-  scope: { egress: string[]; contracts?: string[]; maxSpendPerCall?: string };
-}
-
+/** A skill as the gateway serves it — no nested manifest; the flat fields are the whole shape. */
 export interface SkillDetail {
-  id: string;
   slug: string;
-  version: string;
-  manifest: SkillManifest;
-  body: string;
+  name: string;
+  description: string;
+  priceWei: string;
+  vendor: string;
+  egress: string[];
   createdAt: string;
 }
 
@@ -142,15 +147,13 @@ export async function autoPayInvoke(slug: string, input: unknown, nonce: string)
   return body as InvokeResult;
 }
 
-
-export const gatewayUrl = BASE;
-
 // --- Fabric (kage-parity) ---
 
 export interface FabricApi {
-  id: string;
+  /** Set on rows created through the gateway; catalogue samples are slug-keyed and carry no id. */
+  id?: string;
   name: string;
-  slug: string | null;
+  slug: string;
   description: string | null;
   category: string | null;
   tags: string[];
@@ -171,17 +174,38 @@ export interface FabricApi {
   created_at?: string;
 }
 
+/**
+ * The gateway's catalogue is a skill store — rows carry `priceWei` and `egress`
+ * where the dashboard UI expects `price` and `target_url`. Rows created through
+ * the gateway already carry the full shape, so this only fills the gaps; a
+ * sample with no price or egress degrades to `0` / `""` rather than rendering
+ * "undefined" in the UI.
+ */
+function toFabricApi(a: FabricApi): FabricApi {
+  const skill = a as FabricApi & { priceWei?: string; egress?: string[] };
+  return {
+    ...a,
+    price: a.price ?? skill.priceWei ?? "0",
+    target_url: a.target_url ?? skill.egress?.[0] ?? "",
+    http_method: a.http_method ?? "GET",
+    is_public: a.is_public ?? false,
+    tags: a.tags ?? [],
+    owner_address: a.owner_address ?? null,
+    request_count: a.request_count ?? 0,
+  };
+}
+
 export async function listFabricApis(owner?: string): Promise<FabricApi[]> {
   const q = owner ? `?owner=${encodeURIComponent(owner)}` : "";
   const res = await fetch(`${BASE}/fabric/apis${q}`);
   if (!res.ok) throw new Error(`apis failed: ${res.status}`);
-  return ((await res.json()) as { apis: FabricApi[] }).apis;
+  return ((await res.json()) as { apis: FabricApi[] }).apis.map(toFabricApi);
 }
 
 export async function listFabricApisPublic(): Promise<FabricApi[]> {
   const res = await fetch(`${BASE}/fabric/apis?scope=public`);
   if (!res.ok) throw new Error(`apis failed: ${res.status}`);
-  return ((await res.json()) as { apis: FabricApi[] }).apis;
+  return ((await res.json()) as { apis: FabricApi[] }).apis.map(toFabricApi);
 }
 
 export async function createFabricApi(body: Record<string, unknown>) {
@@ -196,9 +220,10 @@ export async function createFabricApi(body: Record<string, unknown>) {
 }
 
 export interface FabricWorkflow {
-  id: string;
+  /** Set on rows created through the gateway; catalogue samples are slug-keyed and carry no id. */
+  id?: string;
   name: string;
-  slug: string | null;
+  slug: string;
   description: string | null;
   is_public: boolean;
   input_variables: { name: string; type?: string; required?: boolean; description?: string }[];
@@ -210,14 +235,18 @@ export interface FabricWorkflow {
 
 export interface FabricMcpServer {
   id: string;
+  /** Absent on rows seeded before the gateway assigned slugs; the UI falls back to the id. */
   slug: string | null;
+  /** The gateway's native field; the UI prefers `display_name`. */
+  name?: string;
   display_name: string;
   description: string | null;
   is_public: boolean;
   tools: string[];
   workflows: string[];
   owner_address: string | null;
-  created_at: string;
+  /** Absent on older gateway rows — the UI renders no date rather than "Invalid Date". */
+  created_at?: string;
 }
 
 export interface FabricStats {
@@ -238,11 +267,29 @@ export interface FabricStats {
   session: { cap: string | null; spent: string | null; remaining: string | null; expiry: string | null; live: boolean };
 }
 
+/**
+ * The gateway stores workflows as `{ slug, name, graph, createdAt }`; the UI
+ * also reads `steps`, `tags` and friends. Derive them from the graph so a
+ * sample workflow shows its real step count and kind chips instead of zeros.
+ */
+function toFabricWorkflow(w: FabricWorkflow & { graph?: { nodes?: { kind?: string }[] } }): FabricWorkflow {
+  const steps = (w.steps as { kind?: string }[] | undefined) ?? w.graph?.nodes ?? [];
+  const kinds = [...new Set(steps.map((s) => s.kind).filter(Boolean))] as string[];
+  return {
+    ...w,
+    description: w.description ?? "",
+    is_public: w.is_public ?? false,
+    input_variables: w.input_variables ?? [],
+    steps,
+    tags: w.tags ?? kinds,
+  };
+}
+
 export async function listFabricWorkflows(scope?: string): Promise<FabricWorkflow[]> {
   const q = scope ? `?scope=${scope}` : "";
   const res = await fetch(`${BASE}/fabric/workflows${q}`);
   if (!res.ok) throw new Error(`workflows failed: ${res.status}`);
-  return ((await res.json()) as { workflows: FabricWorkflow[] }).workflows;
+  return ((await res.json()) as { workflows: FabricWorkflow[] }).workflows.map(toFabricWorkflow);
 }
 
 export async function createFabricWorkflow(body: Record<string, unknown>) {
@@ -286,11 +333,25 @@ export async function runFabricApi(slug: string, args: Record<string, unknown>) 
   return res.json();
 }
 
+/** Fill the gaps between the gateway's leaner row shape and what the UI renders. */
+function toFabricMcpServer(m: FabricMcpServer & { name?: string }): FabricMcpServer {
+  return {
+    ...m,
+    slug: m.slug ?? m.id,
+    display_name: m.display_name ?? m.name ?? "Untitled server",
+    description: m.description ?? "",
+    is_public: m.is_public ?? false,
+    tools: m.tools ?? [],
+    workflows: m.workflows ?? [],
+    owner_address: m.owner_address ?? null,
+  };
+}
+
 export async function listFabricMcpServers(scope?: string): Promise<FabricMcpServer[]> {
   const q = scope ? `?scope=${scope}` : "";
   const res = await fetch(`${BASE}/fabric/mcp-servers${q}`);
   if (!res.ok) throw new Error(`mcp list failed: ${res.status}`);
-  return ((await res.json()) as { servers: FabricMcpServer[] }).servers;
+  return ((await res.json()) as { servers: FabricMcpServer[] }).servers.map(toFabricMcpServer);
 }
 
 export async function createFabricMcpServer(body: Record<string, unknown>) {
@@ -367,7 +428,12 @@ export async function getFabricWalletStatus(address: string) {
   return res.json() as Promise<{ ok: boolean; funded?: boolean; ETH?: string; wei?: string; demo?: boolean; error?: string }>;
 }
 
-export const fabricMcpUrl = process.env.NEXT_PUBLIC_FABRIC_MCP_URL ?? "http://localhost:8403";
+/**
+ * Base for the MCP connect URL. The gateway serves the MCP endpoint at its own
+ * origin (`/mcp`), so the default is the gateway URL — not localhost, which a
+ * production build would otherwise ship to every visitor.
+ */
+export const fabricMcpUrl = process.env.NEXT_PUBLIC_FABRIC_MCP_URL ?? ABSOLUTE;
 
 // --- Nox (confidential settlement) ---
 
