@@ -31,8 +31,13 @@ jobs:
       - name: Lint
         run: bun run lint
 
+      # `bun run test`, not a bare `bun test`. A bare invocation walks the whole
+      # repo and pulls `contracts/test/` into Bun's runner, where the hardhat
+      # import resolves no config and the job dies with HHE3 — a CI failure that
+      # says nothing about the code. The script runs the unit suite under Bun and
+      # the contract suite under hardhat, each with the runner it needs.
       - name: Test
-        run: bun test
+        run: bun run test
 
       - name: Build
         run: bun run build

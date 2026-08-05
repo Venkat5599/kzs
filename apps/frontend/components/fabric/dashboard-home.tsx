@@ -107,7 +107,7 @@ function FlowStep({
 export function DashboardHome({
   go,
 }: {
-  go: (s: "apis" | "mcp" | "workflows" | "marketplace" | "session-keys") => void;
+  go: (s: "apis" | "mcp" | "workflows" | "marketplace") => void;
 }) {
   const [s, setS] = useState<Awaited<ReturnType<typeof getFabricStats>> | null>(null);
   const [act, setAct] = useState<unknown[] | null>(null);
@@ -426,20 +426,6 @@ export function DashboardHome({
           </div>
         )}
 
-        {/* Only once there is something to manage. Offering "Manage session
-            keys" to someone with no session key sends them to an empty screen,
-            and "Publish API" was a different job entirely — it already has its
-            own card in Manage directly below, so it is not repeated here. */}
-        {prov && (
-          <div className="mt-4">
-            <button
-              onClick={() => go("session-keys")}
-              className="inline-flex items-center gap-2 rounded-xl bg-white/[0.03] px-4 py-3 text-sm font-medium text-neutral-300 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] transition-colors duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] hover:bg-white/[0.06] hover:text-white"
-            >
-              <KeyRound className="h-4 w-4" /> Manage session keys
-            </button>
-          </div>
-        )}
       </Panel>
 
       <div>

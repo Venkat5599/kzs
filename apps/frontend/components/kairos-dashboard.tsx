@@ -11,7 +11,6 @@ import {
   ExternalLink,
   ShoppingBag,
   Wallet,
-  KeyRound,
   Lock,
   EyeOff,
   type LucideIcon, BarChart3 } from "lucide-react";
@@ -23,7 +22,6 @@ import { McpSection } from "@/components/fabric/mcp-section";
 import { WorkflowsSection } from "@/components/fabric/workflows-section";
 import { MarketplaceSection } from "@/components/fabric/marketplace-section";
 import { AnalyticsSection } from "@/components/fabric/analytics-section";
-import { SessionKeysSection } from "@/components/fabric/session-keys-section";
 import { NoxVaultSection } from "@/components/fabric/nox-vault-section";
 import { StealthSection } from "@/components/fabric/stealth-section";
 import { useWallet } from "@/lib/wallet";
@@ -37,7 +35,6 @@ export type SectionKey =
   | "workflows"
   | "analytics"
   | "marketplace"
-  | "session-keys"
   | "stealth";
 
 const SECTIONS: { key: SectionKey; label: string; icon: LucideIcon }[] = [
@@ -49,7 +46,6 @@ const SECTIONS: { key: SectionKey; label: string; icon: LucideIcon }[] = [
   { key: "workflows", label: "Workflows", icon: Workflow },
   { key: "analytics", label: "Analytics", icon: BarChart3 },
   { key: "marketplace", label: "Marketplace", icon: ShoppingBag },
-  { key: "session-keys", label: "Session keys", icon: KeyRound },
 ];
 
 const short = (s: string, head = 7, tail = 5) => (s.length > head + tail ? `${s.slice(0, head)}…${s.slice(-tail)}` : s);
@@ -175,7 +171,6 @@ export function KairosDashboard({ initialTab }: { initialTab?: SectionKey }): Re
               {active === "workflows" && <WorkflowsSection />}
               {active === "analytics" && <AnalyticsSection />}
               {active === "marketplace" && <MarketplaceSection />}
-              {active === "session-keys" && <SessionKeysSection />}
             </motion.div>
           </AnimatePresence>
         </div>

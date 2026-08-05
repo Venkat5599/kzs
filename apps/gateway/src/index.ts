@@ -262,6 +262,17 @@ app.get("/fabric/wallet-status", async (c) => {
 app.post("/fabric/apis", async (c) => c.json(store.publishSkill(await c.req.json()), 201));
 app.post("/fabric/workflows", async (c) => c.json(store.saveWorkflow(await c.req.json()), 201));
 app.post("/fabric/mcp-servers", async (c) => c.json(store.saveMcpServer(await c.req.json()), 201));
+
+/** Change which tools and workflows a server exposes. Addressed by slug or id. */
+app.patch("/fabric/mcp-servers/:slug", async (c) => {
+  const body = await c.req.json<{ tools?: string[]; workflows?: string[] }>();
+  const updated = store.updateMcpServer(c.req.param("slug"), {
+    ...(body.tools ? { tools: body.tools } : {}),
+    ...(body.workflows ? { workflows: body.workflows } : {}),
+  });
+  if (!updated) throw new KairosError("not_found", "MCP server not found.");
+  return c.json(updated);
+});
 app.post("/fabric/workflows/seed", (c) => c.json({ workflows: store.seedWorkflows() }));
 app.post("/fabric/marketplace/seed", (c) => c.json({ apis: store.seedSkills() }));
 app.post("/fabric/provision", async (c) => {

@@ -8,18 +8,14 @@ import {
   getNoxAgent,
   getNoxBudget,
   getNoxClosedEpoch,
-  getNoxSafe,
   getNoxStatus,
-  noxExecuteBatch,
   noxFlushEpoch,
   noxFund,
   noxRegisterAgent,
-  noxSetSafe,
   noxSettle,
   type NoxAgent,
   type NoxBudget,
   type NoxClosedEpoch,
-  type NoxSafe,
   type NoxSettlement,
   type NoxStatus,
 } from "@/lib/api";
@@ -105,10 +101,7 @@ export function NoxVaultSection() {
   >(null);
   const [settlement, setSettlement] = useState<NoxSettlement | null>(null);
 
-  const [safe, setSafe] = useState<NoxSafe | null>(null);
-  const [safeAddr, setSafeAddr] = useState("");
   const [closed, setClosed] = useState<NoxClosedEpoch | null>(null);
-  const [batchTo, setBatchTo] = useState(DEAD);
 
   const refresh = useCallback(async () => {
     try {
@@ -120,9 +113,6 @@ export function NoxVaultSection() {
         setAgentAddr((prev) => prev || s.relayer!);
         setAgent(await getNoxAgent(s.relayer).catch(() => null));
       }
-
-      const safeState = await getNoxSafe().catch(() => null);
-      setSafe(safeState);
 
       // The most recently closed epoch is the one before the open epoch; it is
       // the only one whose aggregate has been released for public decryption.
@@ -390,72 +380,18 @@ export function NoxVaultSection() {
       <CapPolicyBoard />
 
       <Panel className="space-y-4">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <h3 className="text-sm font-semibold text-white">Safe module</h3>
-            <p className="mt-1 max-w-xl text-sm text-neutral-400">
-              Kairos spends from an unmodified Safe through{" "}
-              <span className="font-mono text-neutral-300">execTransactionFromModule</span>. Safe is
-              never forked and funds never migrate — the vault is installed with{" "}
-              <span className="font-mono text-neutral-300">enableModule</span> and can be removed the
-              same way.
-            </p>
-          </div>
-          {safe?.standalone === false && (
-            <Chip accent={safe.installed}>{safe.installed ? "module enabled" : "not enabled"}</Chip>
-          )}
+        <div>
+          <h3 className="text-sm font-semibold text-white">Batch settlement</h3>
+          <p className="mt-1 max-w-xl text-sm text-neutral-400">
+            A closed epoch releases one aggregate. Many private payments leave as a
+            single public transfer, so no individual payment can be picked out of
+            what the chain shows.
+          </p>
         </div>
 
-        {safe?.standalone ? (
-          <Field label="Attach a Safe" hint="the vault runs standalone until a Safe is set">
-            <div className="flex gap-2">
-              <Input
-                value={safeAddr}
-                onChange={(e) => setSafeAddr(e.target.value)}
-                placeholder="0x… Safe address"
-                className="font-mono"
-              />
-              <Button
-                disabled={busy !== null || !safeAddr}
-                onClick={() =>
-                  run("safe", async () => {
-                    const tx = await noxSetSafe(safeAddr);
-                    setLastTx({ url: tx.explorerUrl, hash: tx.txHash, label: "safe attached" });
-                  })
-                }
-              >
-                {busy === "safe" ? <Loader2 className="h-4 w-4 animate-spin" /> : "Attach"}
-              </Button>
-            </div>
-          </Field>
-        ) : (
-          safe?.safe && (
-            <div className="flex items-center gap-2 text-xs text-neutral-500">
-              <span>safe</span>
-              <a
-                href={safe.explorer ?? undefined}
-                target="_blank"
-                rel="noreferrer"
-                className="font-mono text-neutral-300 hover:text-accent"
-              >
-                {short(safe.safe, 10, 8)}
-              </a>
-              <CopyBtn text={safe.safe} />
-            </div>
-          )
-        )}
-
-        {!safe?.standalone && safe?.installed === false && (
-          <div className="rounded-xl border border-amber-500/30 bg-amber-500/[0.06] px-4 py-3 text-sm text-amber-300">
-            This Safe has not enabled the module yet. Run{" "}
-            <span className="font-mono">enableModule({status?.vaultAddress ?? "vault"})</span> from
-            the Safe before sending a batch out.
-          </div>
-        )}
-
         <Field
-          label="Send the batch out"
-          hint="Many private payments leave as a single public transfer, so no one payment can be picked out of it."
+          label="The published aggregate"
+          hint="One number, readable by anyone, standing in for every payment in the batch."
         >
           {closed?.closed ? (
             <div className="space-y-2">
@@ -469,29 +405,6 @@ export function NoxVaultSection() {
                       }, and cannot be split back into them.`
                     : "No payments went into this batch."}
                 </div>
-              </div>
-              <div className="flex gap-2">
-                <Input
-                  value={batchTo}
-                  onChange={(e) => setBatchTo(e.target.value)}
-                  className="font-mono"
-                />
-                <Button
-                  variant="outline"
-                  disabled={busy !== null || !safe?.installed || !closed.totalWei}
-                  onClick={() =>
-                    run("batch", async () => {
-                      const tx = await noxExecuteBatch(closed.epoch, batchTo, closed.totalWei!);
-                      setLastTx({
-                        url: tx.explorerUrl,
-                        hash: tx.txHash,
-                        label: `epoch ${closed.epoch} executed`,
-                      });
-                    })
-                  }
-                >
-                  {busy === "batch" ? <Loader2 className="h-4 w-4 animate-spin" /> : "Execute"}
-                </Button>
               </div>
             </div>
           ) : (

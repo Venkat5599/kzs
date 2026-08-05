@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import { Plus, ArrowLeft, Store, Loader2, Terminal, Search, Zap, Play, Trash2 } from "lucide-react";
+import { Plus, ArrowLeft, Store, Loader2, Terminal, Search, Zap, Trash2 } from "lucide-react";
 import { Panel, Field, Input, Textarea, Button, Toggle, Chip, Empty, short, CopyBtn } from "./ui";
 import { useWallet } from "@/lib/wallet";
-import { createFabricApi, gatewayUrl, listFabricApis, runFabricApi, type FabricApi } from "@/lib/api";
+import { createFabricApi, gatewayUrl, listFabricApis, type FabricApi } from "@/lib/api";
 
 /**
  * One numbered group of related fields.
@@ -215,61 +215,7 @@ function ApiDetail({ api, onBack }: { api: FabricApi; onBack: () => void }) {
         </Panel>
       </div>
 
-      <TestApi api={api} />
     </div>
-  );
-}
-
-function TestApi({ api }: { api: FabricApi }) {
-  const [argsText, setArgsText] = useState("{}");
-  const [busy, setBusy] = useState(false);
-  const [res, setRes] = useState<{ ok: boolean; status?: number; body?: unknown; error?: string } | null>(null);
-
-  const run = async () => {
-    setBusy(true);
-    setRes(null);
-    let args: Record<string, unknown> = {};
-    try {
-      args = argsText.trim() ? (JSON.parse(argsText) as Record<string, unknown>) : {};
-    } catch {
-      setRes({ ok: false, error: "args is not valid JSON" });
-      setBusy(false);
-      return;
-    }
-    try {
-      setRes(await runFabricApi(api.slug ?? api.id, args));
-    } catch (e) {
-      setRes({ ok: false, error: String((e as Error).message) });
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <Panel>
-      <div className="flex items-center gap-2">
-        <Play className="h-4 w-4 text-accent" />
-        <p className="font-semibold text-white">Test call</p>
-        <Chip accent>live</Chip>
-      </div>
-      <p className="mt-2 text-sm text-neutral-500">
-        Proxies to {api.target_url} with your args. Variables substitute {"{name}"} in the URL / query.
-      </p>
-      <Field label="Settings to send" hint="Leave as {} if the service needs nothing extra.">
-        <Textarea rows={4} value={argsText} onChange={(e) => setArgsText(e.target.value)} className="font-mono" />
-      </Field>
-      <div className="mt-3">
-        <Button onClick={run} disabled={busy}>
-          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />} Send request
-        </Button>
-      </div>
-      {res && (
-        <pre className="mt-4 max-h-72 overflow-auto rounded-xl border border-white/[0.08] bg-black/40 p-4 font-mono text-xs">
-          {res.ok ? `HTTP ${res.status}\n` : res.error}
-          {res.body != null && (typeof res.body === "string" ? res.body : JSON.stringify(res.body, null, 2))}
-        </pre>
-      )}
-    </Panel>
   );
 }
 

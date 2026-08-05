@@ -8,17 +8,12 @@ import {
   Search,
   Trash2,
   Globe,
-  Play,
-  CheckCircle2,
-  XCircle,
-  MinusCircle,
 } from "lucide-react";
 import { Panel, Field, Input, Textarea, Button, Toggle, Chip, Empty, CopyBtn, short } from "./ui";
 import { useWallet } from "@/lib/wallet";
 import {
   createFabricWorkflow,
   listFabricWorkflows,
-  runFabricWorkflow,
   seedFabricWorkflows,
   type FabricWorkflow,
 } from "@/lib/api";
@@ -46,13 +41,6 @@ type BStep = {
 };
 
 const OPS = [">=", ">", "<=", "<", "==", "!="];
-
-type RunStep = { id: string; kind: string; status: "ok" | "skipped" | "error"; detail?: string; output?: unknown };
-type RunResp = {
-  ok: boolean;
-  error?: string;
-  run?: { workflow: string; completed: boolean; steps: RunStep[]; output?: Record<string, unknown> };
-};
 
 export function WorkflowsSection() {
   const [creating, setCreating] = useState(false);
@@ -218,89 +206,7 @@ function WorkflowDetail({ wf, onBack }: { wf: FabricWorkflow; onBack: () => void
         </div>
       </Panel>
 
-      <RunWorkflow wf={wf} onRunState={setRunState} />
     </div>
-  );
-}
-
-function RunWorkflow({ wf, onRunState }: { wf: FabricWorkflow; onRunState?: (s: RunState) => void }) {
-  const inputs = wf.input_variables ?? [];
-  const [vals, setVals] = useState<Record<string, string>>({});
-  const [token, setToken] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [res, setRes] = useState<RunResp | null>(null);
-
-  const run = async () => {
-    setBusy(true);
-    setRes(null);
-    try {
-      const body = (await runFabricWorkflow(wf.slug ?? wf.name, vals, token || undefined)) as RunResp;
-      setRes(body);
-      const next: RunState = {};
-      for (const st of body.run?.steps ?? []) next[st.id] = st.status;
-      onRunState?.(next);
-    } catch (e) {
-      setRes({ ok: false, error: String((e as Error).message) });
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const icon = (s: string) =>
-    s === "ok" ? <CheckCircle2 className="h-4 w-4 text-emerald-400" /> : s === "error" ? <XCircle className="h-4 w-4 text-red-400" /> : <MinusCircle className="h-4 w-4 text-neutral-500" />;
-  const deployHash = res?.run?.output?.deployHash as string | undefined;
-
-  return (
-    <Panel>
-      <p className="font-semibold text-white">Run it live</p>
-      <p className="text-sm text-neutral-500">Executes on the fabric engine. On-chain steps settle via Sepolia transfer.</p>
-      <div className="mt-4 space-y-3">
-        {inputs.map((v) => (
-          <Field key={v.name} label={v.name}>
-            <Input value={vals[v.name] ?? ""} onChange={(e) => setVals((s) => ({ ...s, [v.name]: e.target.value }))} className="font-mono" />
-          </Field>
-        ))}
-        <Field label="Agent token (optional)" hint="Bearer from session keys">
-          <Input value={token} onChange={(e) => setToken(e.target.value)} className="font-mono" placeholder="sk_live_…" />
-        </Field>
-        <Button onClick={run} disabled={busy}>
-          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />} Run workflow
-        </Button>
-      </div>
-
-      {res && (
-        <div className="mt-4 space-y-3">
-          {!res.ok && <p className="text-sm text-red-400">{res.error}</p>}
-          {res.run && (
-            <>
-              <p className="text-sm text-neutral-400">
-                {res.run.completed ? "completed" : "halted"} · {res.run.workflow}
-              </p>
-              <div className="space-y-2">
-                {res.run.steps.map((s) => (
-                  <div key={s.id} className="flex items-center gap-2 rounded-lg border border-white/[0.08] px-3 py-2 text-xs">
-                    {icon(s.status)}
-                    <span className="font-mono text-white">{s.id}</span>
-                    <span className="flex-1 truncate text-neutral-500">{s.detail}</span>
-                    <span className="text-neutral-600">{s.kind}</span>
-                  </div>
-                ))}
-              </div>
-              {deployHash && (
-                <p className="text-xs text-accent">
-                  deployHash: {short(deployHash, 8, 6)}
-                </p>
-              )}
-              {res.run.output && (
-                <pre className="overflow-auto rounded-xl border border-white/[0.08] bg-black/40 p-4 font-mono text-xs">
-                  {JSON.stringify(res.run.output, null, 2)}
-                </pre>
-              )}
-            </>
-          )}
-        </div>
-      )}
-    </Panel>
   );
 }
 

@@ -26,9 +26,15 @@ export interface Workflow {
 
 export interface McpServer {
   id: string;
+  /** Stable handle the dashboard addresses a server by. */
+  slug: string;
   name: string;
   url: string;
   status: "connected" | "disconnected";
+  /** Built-in and API-proxy tools this server exposes to an agent. */
+  tools: string[];
+  /** Workflow slugs this server exposes. */
+  workflows: string[];
 }
 
 export interface ActivityItem {
@@ -90,15 +96,40 @@ export const store = {
   },
 
   saveMcpServer(input: Partial<McpServer> & { name?: string }): McpServer {
+    const name = input.name ?? "Untitled server";
     const server: McpServer = {
       id: input.id ?? crypto.randomUUID(),
-      name: input.name ?? "Untitled server",
+      slug: input.slug ?? slugify(name),
+      name,
       url: input.url ?? "",
       status: input.status ?? "disconnected",
+      tools: input.tools ?? [],
+      workflows: input.workflows ?? [],
     };
     mcpServers.set(server.id, server);
     note("mcp.registered", server.name);
     return server;
+  },
+
+  /**
+   * Change which tools and workflows a server exposes.
+   *
+   * Addressed by slug or id, because the dashboard holds the slug while the map
+   * is keyed by id. Returns `null` for an unknown server so the route can answer
+   * 404 rather than silently creating one.
+   */
+  updateMcpServer(
+    slugOrId: string,
+    patch: Partial<Pick<McpServer, "tools" | "workflows" | "status" | "name" | "url">>,
+  ): McpServer | null {
+    const server =
+      mcpServers.get(slugOrId) ?? [...mcpServers.values()].find((s) => s.slug === slugOrId);
+    if (!server) return null;
+
+    const next: McpServer = { ...server, ...patch };
+    mcpServers.set(next.id, next);
+    note("mcp.updated", next.name);
+    return next;
   },
 
   /**
