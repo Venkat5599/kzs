@@ -18,6 +18,27 @@ const nextConfig: NextConfig = {
   compiler: {
     removeConsole: process.env.NODE_ENV === "production",
   },
+
+  /**
+   * Proxy the gateway under our own origin.
+   *
+   * Vercel gives a project several hostnames — the alias, an auto-assigned
+   * `<project>-<words>.vercel.app`, and a fresh one per deployment. The gateway
+   * allowlists origins explicitly, so a browser landing on any hostname other
+   * than the allowlisted one received no `Access-Control-Allow-Origin` header
+   * and every panel died with "Failed to fetch". Telling people to use the right
+   * URL is not a fix; the next preview deployment breaks it again.
+   *
+   * A rewrite is performed by the Next server, so the browser only ever talks to
+   * the origin it loaded from and CORS never enters into it. Works on every
+   * hostname, previews included, with no gateway change.
+   */
+  async rewrites() {
+    const gateway = (
+      process.env.NEXT_PUBLIC_GATEWAY_URL ?? "https://kairos-api.187.127.137.136.sslip.io"
+    ).replace(/\/+$/, "");
+    return [{ source: "/gw/:path*", destination: `${gateway}/:path*` }];
+  },
 };
 
 export default nextConfig;

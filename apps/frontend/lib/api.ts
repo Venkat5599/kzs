@@ -15,7 +15,19 @@ const FALLBACK =
       "https://kairos-api.187.127.137.136.sslip.io"
     : "http://localhost:8080";
 
-const BASE = (process.env.NEXT_PUBLIC_GATEWAY_URL ?? FALLBACK).replace(/\/+$/, "");
+const ABSOLUTE = (process.env.NEXT_PUBLIC_GATEWAY_URL ?? FALLBACK).replace(/\/+$/, "");
+
+/**
+ * In the browser, go through the same-origin `/gw` proxy declared in
+ * `next.config.ts`; on the server, call the gateway directly.
+ *
+ * The gateway allowlists origins, and Vercel serves this app on several
+ * hostnames (the alias, an auto-assigned one, and one per deployment). Calling
+ * it cross-origin therefore worked from exactly one hostname and failed with
+ * "Failed to fetch" everywhere else. A same-origin request has no such problem.
+ * Server-side there is no origin and no CORS, so the direct URL is right there.
+ */
+const BASE = typeof window === "undefined" ? ABSOLUTE : "/gw";
 
 export interface SkillSummary {
   id: string;
