@@ -1,4 +1,4 @@
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 import { cors } from "hono/cors";
 import { ConfidentialClient } from "@kairos/confidential";
 import {
@@ -15,6 +15,8 @@ import { loadConfig } from "./config.js";
 import { store } from "./store.js";
 import { handleMcp } from "./mcp.js";
 import { announceStealthPayout, resolveStealthPayout } from "./stealth.js";
+import { createExecutionService } from "@kairos/execution";
+import { resolveValue, type WorkflowGraph } from "@kairos/workflow";
 import {
   claimQuote,
   decodePaymentHeader,
@@ -205,8 +207,80 @@ app.get("/skills/:slug", (c) => {
 app.get("/fabric/apis", (c) => c.json({ apis: store.skills() }));
 app.get("/fabric/workflows", (c) => c.json({ workflows: store.workflows() }));
 app.get("/fabric/mcp-servers", (c) => c.json({ servers: store.mcpServers() }));
-app.get("/fabric/runs", (c) => c.json({ runs: store.runs() }));
+app.get("/fabric/runs", (c) => {
+  const workflow = c.req.query("workflow");
+  const limitRaw = Number(c.req.query("limit") ?? "20");
+  const limit = Number.isFinite(limitRaw) && limitRaw > 0 ? limitRaw : 20;
+  let runs = store.runs();
+  if (workflow) runs = runs.filter((r) => (r as { workflow?: string }).workflow === workflow);
+  return c.json({ runs: runs.slice(0, limit) });
+});
+app.get("/fabric/runs/:id", (c) => {
+  const run = store.runs().find((r) => (r as { id?: string }).id === c.req.param("id"));
+  if (!run) return c.json({ error: "run not found" }, 404);
+  return c.json(run);
+});
 app.get("/fabric/activity", (c) => c.json({ activity: store.activity() }));
+
+/**
+ * Run a workflow and record the trace.
+ *
+ * The executor is `@kairos/execution` over `@kairos/workflow` — validation and
+ * traversal live in the packages; this route only supplies the step handlers.
+ * HTTP nodes call out (bounded, 8s); transform nodes resolve `{{…}}` templates;
+ * onchain nodes have no handler here, so they are honestly reported as skipped
+ * rather than silently "succeeding".
+ */
+const executor = createExecutionService({
+  maxNodeExecutions: Number(process.env.WORKFLOW_MAX_NODE_EXECUTIONS ?? 500),
+  maxLoopItems: Number(process.env.WORKFLOW_MAX_LOOP_ITEMS ?? 100),
+  record: (run) => store.recordRun(run),
+});
+
+app.post("/fabric/run/workflow", async (c) => {
+  const body = (await c.req.json().catch(() => null)) as { slug?: string; input?: Record<string, unknown> } | null;
+  const slug = body?.slug;
+  if (!slug) return c.json({ ok: false, error: "slug is required" }, 400);
+  const wf = store.workflows().find((w) => w.slug === slug);
+  if (!wf) return c.json({ ok: false, error: "workflow not found" }, 404);
+
+  const result = await executor.run(
+    { slug: wf.slug, name: wf.name, graph: wf.graph as WorkflowGraph },
+    body.input ?? {},
+    {
+      http: async (node) => {
+        const cfg = node.config ?? {};
+        const url = String(cfg.url ?? "");
+        if (!/^https?:\/\//.test(url)) throw new Error(`http node has no usable url (${url || "empty"})`);
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 8000);
+        try {
+          const res = await fetch(url, {
+            method: String(cfg.method ?? "GET"),
+            headers: { "content-type": "application/json" },
+            signal: controller.signal,
+          });
+          const text = await res.text();
+          let data: unknown = text;
+          try {
+            data = text ? JSON.parse(text) : null;
+          } catch {
+            // keep the raw text as the body
+          }
+          return { status: res.status, body: data };
+        } finally {
+          clearTimeout(timer);
+        }
+      },
+      transform: async (node, ctx) => ({ value: resolveValue(node.config?.value, ctx) }),
+    },
+  );
+
+  if (!result.ok) {
+    return c.json({ ok: false, error: result.error.message }, (STATUS[result.error.code] ?? 500) as 500);
+  }
+  return c.json({ ok: true, run: result.value });
+});
 
 app.get("/fabric/logs", (c) => {
   const logs = store.activity();
@@ -294,8 +368,14 @@ app.get("/payments/usage", (c) => c.json({ items: store.activity() }));
 // binary-search the encrypted cap by sending payments and watching which shape
 // came back — defeating the branchless settle path entirely.
 
-app.post("/x402/skills/:slug", async (c) => {
-  const slug = c.req.param("slug");
+/**
+ * The quote-then-pay flow for a skill.
+ *
+ * Mounted at both the x402 spec path and the public `/s/:slug` path the
+ * catalogue shows in its curl examples — one contract, two spellings.
+ */
+const skillPayment = async (c: Context) => {
+  const slug = c.req.param("slug") ?? "";
   const skill = store.skill(slug);
   // A 404 before any payment consideration. Whether a skill exists is public —
   // it is in `GET /skills` — so this leaks nothing the catalogue does not.
@@ -376,6 +456,62 @@ app.post("/x402/skills/:slug", async (c) => {
     hash,
     ...(stealth ? { stealth } : {}),
   });
+};
+
+app.post("/x402/skills/:slug", skillPayment);
+app.post("/s/:slug", skillPayment);
+
+/**
+* Pay for a skill with the gateway's own relayer key, on behalf of the caller.
+*
+* This is the "auto-pay" leg of the catalogue: the caller got a quote from
+* `POST /s/:slug` (or `/x402/skills/:slug`), then spends it here by nonce. No
+* X-PAYMENT header is needed — the nonce is single-use, and the gateway funds
+* the settlement from its own registered agent, so the caller never handles
+* the relayer key. The response is identical to the paid path of
+* {@link skillPayment}: the same receipt, byte for byte.
+*/
+app.post("/s/:slug/auto-pay", async (c) => {
+const slug = c.req.param("slug");
+const skill = store.skill(slug);
+if (!skill) throw new KairosError("not_found", "Skill not found.");
+
+const body = await c.req
+  .json<{ nonce?: string; payTo?: string }>()
+  .catch(() => ({}) as { nonce?: string; payTo?: string });
+
+const payTo = confidential.relayerAddress;
+if (!payTo) throw new KairosError("misconfigured", "No payee: gateway is read-only and no payTo was given.");
+
+const requirements = claimQuote(body.nonce);
+if (!requirements) {
+  console.warn(`[x402] auto-pay: unknown, expired or replayed quote for ${slug}`);
+  const offer = quoteFor(skill, `/s/${slug}`, payTo);
+  rememberQuote(offer);
+  return c.json(quoteEnvelope(offer), 402);
+}
+
+const agent = payTo;
+const { hash, verdict } = await confidential.settle(agent, BigInt(requirements.maxAmountRequired));
+
+if (!mayServeResource(verdict)) {
+  if (verdict.outcome === "unreadable") {
+    console.warn(`[fail-closed] refused ${hash}: ${verdict.reason}`);
+  }
+  return c.json(quoteEnvelope(requirements), 402);
+}
+
+const payout = resolveStealthPayout(config, body.payTo);
+const stealth = payout ? await announceStealthPayout(confidential, payout) : null;
+
+c.header("X-PAYMENT-RESPONSE", receiptHeader(hash, agent));
+return c.json({
+  paid: true,
+  skill: { slug: skill.slug, name: skill.name },
+  amountWei: requirements.maxAmountRequired,
+  hash,
+  ...(stealth ? { stealth } : {}),
+});
 });
 
 // ============ stealth addresses ============

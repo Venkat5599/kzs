@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { Plus, ArrowLeft, Store, Loader2, Terminal, Search, Zap, Trash2 } from "lucide-react";
-import { Panel, Field, Input, Textarea, Button, Toggle, Chip, Empty, short, CopyBtn } from "./ui";
+import { Panel, Field, Input, Textarea, Button, Toggle, Chip, Empty, short, CopyBtn, formatAmount } from "./ui";
 import { useWallet } from "@/lib/wallet";
 import { createFabricApi, gatewayUrl, listFabricApis, type FabricApi } from "@/lib/api";
 
@@ -47,13 +47,16 @@ export function ApisSection() {
   const [q, setQ] = useState("");
   const { address } = useWallet();
 
-  const load = () =>
-    listFabricApis(address ?? undefined)
-      .then(setApis)
-      .catch(() => setApis([]));
+  const load = useCallback(
+    () =>
+      listFabricApis(address ?? undefined)
+        .then(setApis)
+        .catch(() => setApis([])),
+    [address],
+  );
   useEffect(() => {
     load();
-  }, [address]);
+  }, [load]);
 
   if (creating) return <CreateApiForm onDone={() => { setCreating(false); load(); }} onCancel={() => setCreating(false)} />;
   if (selected) return <ApiDetail api={selected} onBack={() => setSelected(null)} />;
@@ -88,7 +91,7 @@ export function ApisSection() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">
           {filtered.map((a) => (
-            <button key={a.id} type="button" onClick={() => setSelected(a)} className="text-left">
+            <button key={a.id ?? a.slug} type="button" onClick={() => setSelected(a)} className="text-left">
               <Panel className="h-full cursor-pointer transition hover:border-accent/40">
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent/10">
@@ -100,7 +103,7 @@ export function ApisSection() {
                 <p className="mt-1 line-clamp-2 text-sm text-neutral-500">{a.description}</p>
                 <div className="mt-4 flex flex-wrap gap-2">
                   <Chip accent>
-                    {a.price} ETH / call
+                    {formatAmount(a.price)} / call
                   </Chip>
                   <Chip>{a.http_method}</Chip>
                   {(a.tags ?? []).slice(0, 2).map((t) => (
@@ -145,7 +148,7 @@ function ApiDetail({ api, onBack }: { api: FabricApi; onBack: () => void }) {
           <h1 className="text-3xl font-semibold tracking-tight text-white">{api.name}</h1>
           <div className="mt-2 flex flex-wrap gap-2">
             <Chip accent>
-              <Zap className="h-3 w-3" /> {api.price} ETH / call
+              <Zap className="h-3 w-3" /> {formatAmount(api.price)} / call
             </Chip>
             <Chip>{api.http_method}</Chip>
             <Chip>{api.is_public ? "public" : "private"}</Chip>

@@ -167,7 +167,7 @@ export function MarketplaceSection() {
           <div className="grid gap-4 sm:grid-cols-2">
             {fApis.map((item) =>
               item.kind === "api" ? (
-                <Panel key={item.row.id}>
+                <Panel key={item.row.id ?? item.row.slug}>
                   <div className="flex items-center justify-between gap-2">
                     <p className="font-semibold text-white">{item.row.name}</p>
                     <Chip accent>{Number(item.row.price).toLocaleString()} wei / call</Chip>
@@ -182,7 +182,7 @@ export function MarketplaceSection() {
                   <p className="mt-2 font-mono text-[11px] text-neutral-600">api__{item.row.slug}</p>
                 </Panel>
               ) : (
-                <Panel key={item.row.id}>
+                <Panel key={item.row.id ?? item.row.slug}>
                   <div className="flex items-center justify-between gap-2">
                     <p className="font-semibold text-white">{item.row.name}</p>
                     <Chip accent>
@@ -212,7 +212,7 @@ export function MarketplaceSection() {
         ) : (
           <div className="grid gap-4 sm:grid-cols-2">
             {fWfs.map((w) => (
-              <Panel key={w.id}>
+              <Panel key={w.id ?? w.slug}>
                 <p className="font-semibold text-white">{w.name}</p>
                 <p className="mt-0.5 font-mono text-xs text-neutral-500">wf__{w.slug}</p>
                 <p className="mt-2 line-clamp-2 text-sm text-neutral-500">{w.description}</p>

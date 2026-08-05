@@ -12,8 +12,11 @@
     "lint": "echo 'no lint configured'"
   },
   "dependencies": {
+    "@kairos/catalog": "workspace:*",
     "@kairos/confidential": "workspace:*",
+    "@kairos/execution": "workspace:*",
     "@kairos/shared": "workspace:*",
+    "@kairos/workflow": "workspace:*",
     "hono": "^4.6.0",
     "viem": "^2.55.10"
   }

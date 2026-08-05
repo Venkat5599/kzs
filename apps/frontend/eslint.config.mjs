@@ -11,10 +11,12 @@ import typescript from "eslint-config-next/typescript";
  * flat config takes its file set from here; an `--ext` or `--ignore-pattern` flag
  * on the npm script would be silently dropped.
  */
-export default [
+const config = [
   {
     ignores: [".next/**", "out/**", "node_modules/**", "next-env.d.ts"],
   },
   ...coreWebVitals,
   ...typescript,
 ];
+
+export default config;

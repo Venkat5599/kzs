@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { gatewayUrl } from "@/lib/api";
+import { apiBase } from "@/lib/api";
 import { Panel, Field, Input, Button, Chip, CopyBtn, Amount, short } from "./ui";
 
 /**
@@ -79,7 +79,7 @@ export function StealthSection() {
     setError(null);
     setRefused(false);
     try {
-      const res = await fetch(`${gatewayUrl}/nox/settle`, {
+      const res = await fetch(`${apiBase}/nox/settle`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ agent: agent.trim(), amountWei: amount.trim(), payTo: payTo.trim() }),
@@ -121,7 +121,7 @@ export function StealthSection() {
   async function generate() {
     setKeysBusy(true);
     try {
-      const res = await fetch(`${gatewayUrl}/stealth/keys`, {
+      const res = await fetch(`${apiBase}/stealth/keys`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: "{}",

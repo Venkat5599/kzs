@@ -1,0 +1,20 @@
+{
+  "name": "@kairos/manifest",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Skill manifests — schema, validation and normalization from the gateway's flat skill rows.",
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "echo 'no build step'",
+    "typecheck": "tsc --noEmit",
+    "lint": "echo 'no lint configured'",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@kairos/shared": "workspace:*"
+  }
+}

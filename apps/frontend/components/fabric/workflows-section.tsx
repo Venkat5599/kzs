@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Plus,
   ArrowLeft,
@@ -49,10 +49,13 @@ export function WorkflowsSection() {
   const [q, setQ] = useState("");
   const { address } = useWallet();
 
-  const load = () => listFabricWorkflows(address ?? undefined).then(setWfs).catch(() => setWfs([]));
+  const load = useCallback(
+    () => listFabricWorkflows(address ?? undefined).then(setWfs).catch(() => setWfs([])),
+    [address],
+  );
   useEffect(() => {
     load();
-  }, [address]);
+  }, [load]);
 
   if (creating) return <CreateWorkflowForm onDone={() => { setCreating(false); load(); }} onCancel={() => setCreating(false)} />;
   if (selected) return <WorkflowDetail wf={selected} onBack={() => setSelected(null)} />;
@@ -90,7 +93,7 @@ export function WorkflowsSection() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">
           {filtered.map((w) => (
-            <button key={w.id} type="button" onClick={() => setSelected(w)} className="text-left">
+            <button key={w.id ?? w.slug} type="button" onClick={() => setSelected(w)} className="text-left">
               <Panel className="h-full cursor-pointer transition hover:border-accent/40">
                 <div className="flex items-center gap-2">
                   <p className="text-lg font-semibold text-white">{w.name}</p>

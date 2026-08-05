@@ -4,7 +4,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ArrowLeft, Coins, ExternalLink, Loader2, Play } from "lucide-react";
-import { autoPayInvoke, gatewayUrl, getChainStatus, getSkill, invokeSkill, type SkillDetail, type X402Quote } from "@/lib/api";
+import { autoPayInvoke, gatewayUrl, getChainStatus, getSkill, invokeSkill, withExplorerTx, type SkillDetail, type X402Quote } from "@/lib/api";
 
 export default function InvokePage() {
   const params = useParams();
@@ -29,7 +29,12 @@ export default function InvokePage() {
     try {
       const parsed = JSON.parse(input);
       if (autoPay && quote) {
-        const res = await autoPayInvoke(slug, parsed, quote.nonce);
+        const nonce = quote.accepts[0]?.extra?.nonce;
+        if (!nonce) {
+          setError("quote carries no nonce — refresh and invoke again");
+          return;
+        }
+        const res = withExplorerTx(await autoPayInvoke(slug, parsed, nonce));
         setResult(JSON.stringify(res, null, 2));
         setQuote(null);
       } else {
@@ -53,7 +58,10 @@ export default function InvokePage() {
   const payment = (() => {
     if (!result) return undefined;
     try {
-      return (JSON.parse(result) as { payment?: { explorerUrl?: string } }).payment;
+      // The paid receipt carries the tx hash at the top level; withExplorerTx
+      // adds the explorerUrl. Only a real link is worth rendering.
+      const parsed = JSON.parse(result) as { explorerUrl?: string };
+      return parsed.explorerUrl ? { explorerUrl: parsed.explorerUrl } : undefined;
     } catch {
       return undefined;
     }
@@ -66,11 +74,11 @@ export default function InvokePage() {
       </Link>
       <div className="mt-6 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">{skill.manifest.name}</h1>
+          <h1 className="text-2xl font-bold">{skill.name}</h1>
           <p className="mt-1 font-mono text-sm text-muted-foreground">POST /s/{slug} · {unconfigured ? "chain unconfigured" : "Sepolia testnet"}</p>
         </div>
         <span className="rounded-full bg-accent/20 px-3 py-1 text-sm font-medium">
-          {skill.manifest.pricing.pricePerCall === "0" ? "Free" : `${skill.manifest.pricing.pricePerCall} wei`}
+          {skill.priceWei === "0" ? "Free" : `${skill.priceWei} wei`}
         </span>
       </div>
 
