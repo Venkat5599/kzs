@@ -5,10 +5,13 @@
 locally, pointing at the live gateway. This is NOT a stub: the gateway
 (`https://kairos-api.187.127.137.136.sslip.io`) is real mode
 (`/chain/status` reports `demoMode:false`, Sepolia) and the frontend proxies
-it, so every number on screen is live. The deployed site
-`kairos-nox.vercel.app` will show the identical UI once the
-`fix/frontend-robustness` branch is merged — the only difference is the URL
-in the address bar.
+it, so every number on screen is live.
+
+**Pacing rule:** ~30 seconds between on-chain actions. The iExec TEE
+indexes each transaction asynchronously and Kairos fail-closes on a
+not-yet-decryptable handle, so a settle fired immediately after another
+can read as "Rejected" even when it was fine. Pause ~30s between the two
+settle beats and the demo shows exactly the intended contrast.
 Every number shown below is read from the live gateway/chain on the
 day of recording — if a figure differs when you record, narrate the real one.
 

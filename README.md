@@ -520,8 +520,10 @@ Honest about what is proven and what is not.
 
 The confidential core is complete and verified end to end on Sepolia. The
 service layer around it — gateway routes, the remaining packages, the
-services, and the dashboard — is built, tested and merged; the VPS gateway
-redeploy is what puts the newest routes live.
+services, and the dashboard — is built, tested, merged and **deployed**
+(the VPS gateway runs the current code; the catalogue is seeded via
+`POST /fabric/marketplace/seed` + `/fabric/workflows/seed` after each
+restart, or persists with `CATALOG_STORE_FILE`).
 
 ---
 

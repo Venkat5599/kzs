@@ -3,9 +3,15 @@
 **Runtime:** no fixed limit — show every feature, take as long as each
 screen needs. **Record:** wf-recorder on `http://localhost:5173`
 (production build, live gateway — `demoMode:false`, Sepolia). Every number
-on screen is real; narrate whatever is actually there on the day. If a
-shot depends on the VPS gateway redeploy, it is marked **[needs gateway
-redeploy]** — skip it and cut to the next shot until then.
+on screen is real; narrate whatever is actually there on the day.
+
+**Pacing rule (important):** space the on-chain actions ~30 seconds apart
+(settles, publishes, payments). The iExec TEE indexes each transaction
+asynchronously, and Kairos fail-closes when a fresh handle has not been
+decrypted yet — a settle fired immediately after another can read as
+"Rejected" even when it was fine. 30 seconds between actions and every
+beat shows green. This is the system's honesty working, not a bug: it
+refuses rather than guess.
 
 **Hard rule (no-mock-data):** never present the Marketplace samples or any
 sample row as real catalogue business. They are labeled samples — say so.
@@ -108,8 +114,8 @@ the dashboard, top to bottom."
 - Open **Sample — Market data**. Detail page: price, input schema, and the
   curl example against `POST /s/sample-market-data`.
 - **Invoke** → the gateway answers 402 with an x402 quote (price, network,
-  nonce) — the "pay first" handshake. **[needs gateway redeploy]** — until
-  then, show the quote page only; the Pay & Run step needs the new route.
+  nonce) — the "pay first" handshake. Then **Pay & Run** → a real paid
+  receipt (amount, tx hash, stealth announcement).
 - Narration: "Every API is metered in wei and gated by x402: you ask the
   price, get a quote, pay in the same transaction, and the response comes
   back. An agent can navigate this catalogue without ever seeing a wallet."
@@ -118,7 +124,8 @@ the dashboard, top to bottom."
 - Click **MCP Servers**: the live servers and their connect URL on the
   gateway (`…/mcp`), the same endpoint agents connect to.
 - Click **Workflows**: the flow graphs (trigger → condition → http /
-  transform / on-chain nodes), step counts, and past runs.
+  transform / on-chain nodes), step counts, and past runs. Optionally hit
+  **Run** on a workflow and show the per-node trace.
 - Narration: "The same catalogue speaks Model Context Protocol — agents
   connect over the gateway's MCP endpoint — and reusable workflows chain
   steps with real branch conditions, not mockups."
@@ -154,9 +161,9 @@ the dashboard, top to bottom."
   shots; no idle cursor hovering.
 - **Never** present Marketplace samples as real revenue. The sample
   catalogue is labeled — keep the label in the frame.
-- **[needs gateway redeploy]** shots: API Invoke paid flow, Workflow Run,
-  and the "Batch not ready" flush message. Record them after the VPS
-  gateway redeploy, or cut past them.
+- All shots are live: API invoke → quote → pay, workflow runs, the
+  "Batch not ready" flush message, and the full-policy-chain agent
+  registration (allowlist + cap + velocity).
 - Etherscan loads slowly — pre-open the tx in a tab, cut the gap in
   Recordly.
 - Numbers shift constantly (settles land, epochs flush) — narrate what is
