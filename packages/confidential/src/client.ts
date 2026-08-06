@@ -207,7 +207,19 @@ export class ConfidentialClient {
       const { value } = await client.decrypt(handle);
       return String(value);
     } catch {
-      return null;
+      // The iExec TEE session behind the handle client can go stale (session
+      // TTL / invalidation). Recreate it once and retry: a fresh session is
+      // re-authentication, not a verdict retry, so fail-closed still holds —
+      // a genuinely unreadable handle stays unreadable through the new
+      // session too, and returns null below.
+      try {
+        if (!this.walletClient) return null;
+        this.handleClient = await createViemHandleClient(this.walletClient);
+        const { value } = await this.handleClient.decrypt(handle);
+        return String(value);
+      } catch {
+        return null;
+      }
     }
   }
 
