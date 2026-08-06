@@ -514,12 +514,14 @@ Honest about what is proven and what is not.
 | `KairosSettlementRouter` → real Uniswap V3 swap | **Executed live** |
 | Router test suite | 13 passing |
 | `packages/shared` — fail-closed verdict rule | 12 passing |
-| `apps/gateway`, remaining packages, `services/*` | In progress |
-| Dashboard wired to a live gateway | In progress |
+| `packages/{chain,manifest,authz,workflow,sdk}` | Built + tested (52 tests) |
+| `services/{catalog,payments,identity,execution}` | Built + tested; gateway wired (`CATALOG_STORE_FILE` persistence, `/fabric/run/workflow`, `/s/:slug` + `/s/:slug/auto-pay`, flush readiness check) |
+| Dashboard wired to a live gateway | **Live** — every page reads the real gateway (`demoMode:false`, Sepolia) |
 
-The confidential core is complete and verified end to end on Sepolia. What
-remains is the service layer around it — the gateway, the remaining packages,
-and wiring the dashboard to live chain state.
+The confidential core is complete and verified end to end on Sepolia. The
+service layer around it — gateway routes, the remaining packages, the
+services, and the dashboard — is built, tested and merged; the VPS gateway
+redeploy is what puts the newest routes live.
 
 ---
 

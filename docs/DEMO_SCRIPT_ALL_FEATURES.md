@@ -1,11 +1,11 @@
 # Kairos — full-feature demo video script (all screens)
 
-**Runtime target:** 4:30–5:30 · **Record:** wf-recorder on
-`http://localhost:5173` (production build, live gateway —
-`demoMode:false`, Sepolia). Every number on screen is real; narrate
-whatever is actually there on the day. If a shot depends on the VPS
-gateway redeploy, it is marked **[needs gateway redeploy]** — skip it and
-cut to the next shot until then.
+**Runtime:** no fixed limit — show every feature, take as long as each
+screen needs. **Record:** wf-recorder on `http://localhost:5173`
+(production build, live gateway — `demoMode:false`, Sepolia). Every number
+on screen is real; narrate whatever is actually there on the day. If a
+shot depends on the VPS gateway redeploy, it is marked **[needs gateway
+redeploy]** — skip it and cut to the next shot until then.
 
 **Hard rule (no-mock-data):** never present the Marketplace samples or any
 sample row as real catalogue business. They are labeled samples — say so.
@@ -142,7 +142,7 @@ the dashboard, top to bottom."
   router over its existing ABI, and the event carries one field — the
   epoch. Not who, not how much."
 
-### 13 · Close (5:40–6:00)
+### 13 · Close
 - Back to the landing hero.
 - Narration: "A budget your agent cannot exceed — and cannot reveal.
   Private budgets, public settlement. Live on Sepolia today."
