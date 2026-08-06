@@ -200,8 +200,11 @@ Balance arithmetic is **not** hand-rolled around encrypted values. `settle()`
 calls `Nox.transfer`, because reimplementing atomic confidential movement on top
 of a protocol that already guarantees it is how you introduce the bug.
 
-The relayer is granted **nothing**. It submits transactions without being
-entitled to read a single outcome.
+The relayer is granted **nothing** — in the design, a relayer distinct from
+the owner submits transactions without being entitled to read a single
+outcome. (The live ring currently uses the owner key as the relayer, so the
+gateway does decrypt outcomes; a separate relayer is one `deploy-ring`
+parameter away — see Limitations.)
 
 ---
 
@@ -457,6 +460,23 @@ activity is not distinguishable — but the relayer is visible and learns what i
 relays. Batching mitigates but does not eliminate timing correlation on a
 low-traffic deployment. The gateway holds keys and is trusted. A stealth address
 hides the link, not the amount — the amount is hidden separately, by Nox.
+
+Two deployment facts worth stating as precisely as the rest:
+
+- **In the live ring, the relayer is the owner.** The design — and
+  `deploy-ring.ts` — supports a relayer distinct from the owner, granted
+  nothing and unable to read a single outcome. The ring currently on Sepolia
+  runs both roles with the same key (`0xBfc9521F…`), so the gateway *can*
+  decrypt what it relays. Splitting the key is one parameter in `deploy-ring`;
+  until then, this deployment trusts the gateway with the owner key, exactly
+  as the "gateway holds keys and is trusted" limitation says.
+- **The TEE indexes transactions asynchronously.** A verdict decrypt issued
+  before the iExec TEE has indexed the settlement reads as unreadable, and
+  fail-closed means refuse. Consecutive on-chain actions within seconds of
+  each other can therefore read as "refused" even when authorized; spacing
+  actions ~30 seconds apart keeps every readout green. This is the fail-closed
+  guarantee working as specified — a gateway that retried until a verdict
+  appeared would be a gateway that eventually served anything.
 
 ---
 
