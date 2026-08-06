@@ -186,7 +186,19 @@ app.post("/nox/settle", async (c) => {
   return c.json({ authorized: true, hash, spentWei, ...(stealth ? { stealth } : {}) });
 });
 
-app.post("/nox/epoch/flush", async (c) => c.json({ hash: await confidential.flushEpoch() }));
+app.post("/nox/epoch/flush", async (c) => {
+  // An empty batch cannot be published — check the real epoch state first so
+  // the refusal is a clear message, not an opaque revert from the vault.
+  const { epoch, flushThreshold } = await confidential.status();
+  const info = await confidential.epoch(epoch);
+  if (info.settlementCount < flushThreshold) {
+    throw new KairosError(
+      "invalid_input",
+      `Batch not ready: ${info.settlementCount} payment${info.settlementCount === 1 ? "" : "s"} in it, ${flushThreshold} needed to publish.`,
+    );
+  }
+  return c.json({ hash: await confidential.flushEpoch() });
+});
 
 // ============ catalog + fabric ============
 //
