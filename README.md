@@ -4,6 +4,26 @@
 
 ### A confidentiality layer for public DeFi infrastructure.
 
+<p>
+  <img src="https://img.shields.io/badge/Solidity-%5E0.8-363636?logo=solidity&logoColor=white" alt="Solidity">
+  <img src="https://img.shields.io/badge/TypeScript-5-3178c6?logo=typescript&logoColor=white" alt="TypeScript">
+  <img src="https://img.shields.io/badge/Bun-1.3-f9f9f9?logo=bun&logoColor=black" alt="Bun">
+  <img src="https://img.shields.io/badge/Next.js-16-000000?logo=next.js&logoColor=white" alt="Next.js">
+  <img src="https://img.shields.io/badge/Hono-4-ff5c5c?logo=hono&logoColor=white" alt="Hono">
+</p>
+<p>
+  <img src="https://img.shields.io/badge/network-Sepolia-3c3c3d?logo=ethereum&logoColor=white" alt="Sepolia">
+  <img src="https://img.shields.io/badge/confidential%20compute-iExec%20Nox-2ea44f" alt="iExec Nox">
+  <img src="https://img.shields.io/badge/settlement-Uniswap%20V3-ff007a?logo=uniswap&logoColor=white" alt="Uniswap V3">
+  <img src="https://img.shields.io/badge/payouts-ERC--5564%20stealth-9c6efe" alt="ERC-5564 stealth payouts">
+  <img src="https://img.shields.io/badge/payments-x402-4a90d9" alt="x402 payments">
+  <img src="https://img.shields.io/badge/agents-MCP-000000" alt="Model Context Protocol">
+</p>
+<p>
+  <img src="https://img.shields.io/github/actions/workflow/status/Venkat5599/kzs/ci.yml?branch=main&label=CI" alt="CI">
+  <img src="https://img.shields.io/badge/license-MIT-3da639" alt="MIT license">
+</p>
+
 **Enforce a spending budget on-chain. Publish neither the budget, the balance, nor a single amount. Then route the settlement through an unmodified Uniswap V3 pool.**
 
 </div>

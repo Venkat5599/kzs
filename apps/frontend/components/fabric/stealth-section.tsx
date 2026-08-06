@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { apiBase } from "@/lib/api";
 import { Panel, Field, Input, Button, Chip, CopyBtn, Amount, short } from "./ui";
 
@@ -64,7 +64,7 @@ function Secret({ value }: { value: string }) {
 
 export function StealthSection() {
   const [agent, setAgent] = useState("");
-  const [amount, setAmount] = useState("40000");
+  const [amount, setAmount] = useState("5000");
   const [payTo, setPayTo] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -73,6 +73,23 @@ export function StealthSection() {
 
   const [keys, setKeys] = useState<Keys | null>(null);
   const [keysBusy, setKeysBusy] = useState(false);
+
+  // Prefill the payer with the registered agent, exactly like the vault form.
+  // An empty or arbitrary payer is the single most common reason a stealth
+  // payment "refuses" — the policy chain rejects anything that is not a
+  // registered agent.
+  useEffect(() => {
+    let alive = true;
+    fetch(`${apiBase}/nox/status`)
+      .then((r) => (r.ok ? (r.json() as Promise<{ relayer?: string }>) : null))
+      .then((s) => {
+        if (alive && s?.relayer) setAgent((prev) => prev || s.relayer!);
+      })
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   async function pay() {
     setBusy(true);
@@ -84,7 +101,17 @@ export function StealthSection() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ agent: agent.trim(), amountWei: amount.trim(), payTo: payTo.trim() }),
       });
-      const body = (await res.json()) as Settlement & { message?: string };
+      const text = await res.text();
+      let body: Settlement & { message?: string };
+      try {
+        body = JSON.parse(text) as Settlement & { message?: string };
+      } catch {
+        // A non-JSON body means the gateway (or something in front of it)
+        // answered with an error page — most often a restart or a proxy
+        // timeout. Never surface a raw JSON.parse error to the user.
+        setError("The gateway answered with a non-JSON response — it may have restarted or the request timed out. Try again.");
+        return;
+      }
 
       // A 402 is a refusal, not a failure — the budget did its job. Given its
       // own state so it never reads as a broken request.
@@ -126,7 +153,13 @@ export function StealthSection() {
         headers: { "content-type": "application/json" },
         body: "{}",
       });
-      setKeys((await res.json()) as Keys);
+      const text = await res.text();
+      try {
+        setKeys(JSON.parse(text) as Keys);
+      } catch {
+        setKeys(null);
+        setError("The gateway answered with a non-JSON response — it may have restarted. Try again.");
+      }
     } catch {
       setKeys(null);
     } finally {
@@ -157,7 +190,7 @@ export function StealthSection() {
         </div>
 
         <div className="mt-5 space-y-3">
-          <Field label="Paying as" hint="the registered agent wallet the budget belongs to">
+          <Field label="Budget agent (the registered wallet — keep the prefilled value)" hint="this agent's cap and budget are enforced; not the recipient">
             <Input
               placeholder="0x…"
               value={agent}
