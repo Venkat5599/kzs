@@ -14,6 +14,9 @@ export interface GatewayConfig {
   chainRpcUrl: string;
   vaultAddress: Address;
   capPolicyAddress?: Address;
+  allowlistPolicyAddress?: Address;
+  velocityPolicyAddress?: Address;
+  velocityAllowanceWei?: bigint;
   relayerPrivateKey?: Hex;
   /** ERC-5564 bulletin board. Without it a stealth payment cannot be found. */
   stealthAnnouncerAddress?: Address;
