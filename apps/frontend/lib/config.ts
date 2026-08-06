@@ -10,13 +10,13 @@
  * the first tenant of the vault, not the product.
  */
 
-const VAULT = "0x1b5919e3ec31daaa88a69ca4bf27aa83dbed57f8";
-const ROUTER = "0xec0ec50c8ebffb89aed3072d7c4a74671b2e8d7f";
-const UNISWAP_ROUTER = "0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E";
-const EXPLORER = "https://sepolia.etherscan.io/address";
+const VAULT = process.env.NEXT_PUBLIC_VAULT_ADDRESS ?? "0x1b5919e3ec31daaa88a69ca4bf27aa83dbed57f8";
+const ROUTER = process.env.NEXT_PUBLIC_ROUTER_ADDRESS ?? "0xec0ec50c8ebffb89aed3072d7c4a74671b2e8d7f";
+const UNISWAP_ROUTER = process.env.NEXT_PUBLIC_UNISWAP_ROUTER_ADDRESS ?? "0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E";
+const EXPLORER = process.env.NEXT_PUBLIC_EXPLORER_BASE ?? "https://sepolia.etherscan.io/address";
 
 /** Base for transaction links (the explorer's `/tx` path, not `/address`). */
-const TX_EXPLORER = "https://sepolia.etherscan.io/tx";
+const TX_EXPLORER = process.env.NEXT_PUBLIC_TX_EXPLORER_BASE ?? "https://sepolia.etherscan.io/tx";
 
 /** Link a transaction hash on the explorer. */
 export const txUrl = (hash: string) => `${TX_EXPLORER}/${hash}`;

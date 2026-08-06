@@ -513,14 +513,23 @@ export interface NoxSettlement extends NoxTx {
 
 async function noxJson<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, init);
-  const body = (await res.json()) as T & { error?: string; message?: string };
+  const text = await res.text();
+  let body: T & { error?: string; message?: string } | null = null;
+  try {
+    body = text ? JSON.parse(text) : null;
+  } catch {
+    body = null;
+  }
   // 402 is a meaningful answer here (settlement not authorized), not a failure.
   if (!res.ok && res.status !== 402) {
     // The gateway answers `{ error: <code>, message: <human text> }`; surface
-    // the message, falling back to the code when no message came back.
-    throw new Error(body.message ?? body.error ?? `${path} failed: ${res.status}`);
+    // the message, falling back to the code when no message came back. An
+    // empty body means the proxy cut the connection (the transaction may still
+    // have landed) — say so instead of crashing on JSON.parse.
+    const message = body?.message ?? body?.error ?? (text ? text.slice(0, 200) : "empty response — the gateway may still be processing the transaction");
+    throw new Error(message);
   }
-  return body;
+  return body as T;
 }
 
 export function getNoxStatus(): Promise<NoxStatus> {

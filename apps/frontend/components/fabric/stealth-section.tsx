@@ -48,7 +48,7 @@ interface Keys {
   warning: string;
 }
 
-const EXPLORER = "https://sepolia.etherscan.io/tx";
+const EXPLORER = process.env.NEXT_PUBLIC_TX_EXPLORER_BASE ?? "https://sepolia.etherscan.io/tx";
 
 /** A value that must be readable and copyable, but never wraps into a mess. */
 function Secret({ value }: { value: string }) {
