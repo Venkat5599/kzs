@@ -46,6 +46,11 @@ export function loadConfig(): GatewayConfig {
 
   const vault = address("VAULT_ADDRESS", process.env.VAULT_ADDRESS, true)!;
   const capPolicy = address("CAP_POLICY_ADDRESS", process.env.CAP_POLICY_ADDRESS, false);
+  const velocityPolicy = address("VELOCITY_POLICY_ADDRESS", process.env.VELOCITY_POLICY_ADDRESS, false);
+  const allowlistPolicy = address("ALLOWLIST_POLICY_ADDRESS", process.env.ALLOWLIST_POLICY_ADDRESS, false);
+  const velocityAllowanceWei = process.env.VELOCITY_ALLOWANCE_WEI?.trim()
+    ? BigInt(process.env.VELOCITY_ALLOWANCE_WEI)
+    : undefined;
 
   const key = process.env.RELAYER_PRIVATE_KEY?.trim();
   if (key && !/^0x[0-9a-fA-F]{64}$/.test(key)) {
@@ -76,6 +81,9 @@ export function loadConfig(): GatewayConfig {
     chainRpcUrl: process.env.CHAIN_RPC_URL ?? "https://ethereum-sepolia-rpc.publicnode.com",
     vaultAddress: vault,
     ...(capPolicy ? { capPolicyAddress: capPolicy } : {}),
+    ...(velocityPolicy ? { velocityPolicyAddress: velocityPolicy } : {}),
+    ...(allowlistPolicy ? { allowlistPolicyAddress: allowlistPolicy } : {}),
+    ...(velocityAllowanceWei !== undefined ? { velocityAllowanceWei } : {}),
     ...(key ? { relayerPrivateKey: key as Hex } : {}),
     ...(announcer ? { stealthAnnouncerAddress: announcer } : {}),
     ...(router ? { settlementRouterAddress: router } : {}),
