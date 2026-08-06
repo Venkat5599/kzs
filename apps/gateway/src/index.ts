@@ -49,6 +49,9 @@ const confidential = new ConfidentialClient({
   rpcUrl: config.chainRpcUrl,
   vaultAddress: config.vaultAddress,
   ...(config.capPolicyAddress ? { capPolicyAddress: config.capPolicyAddress } : {}),
+  ...(config.allowlistPolicyAddress ? { allowlistPolicyAddress: config.allowlistPolicyAddress } : {}),
+  ...(config.velocityPolicyAddress ? { velocityPolicyAddress: config.velocityPolicyAddress } : {}),
+  ...(config.velocityAllowanceWei !== undefined ? { velocityAllowanceWei: config.velocityAllowanceWei } : {}),
   ...(config.relayerPrivateKey ? { relayerPrivateKey: config.relayerPrivateKey } : {}),
   ...(config.stealthAnnouncerAddress
     ? { stealthAnnouncerAddress: config.stealthAnnouncerAddress }

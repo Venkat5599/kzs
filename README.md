@@ -200,8 +200,11 @@ Balance arithmetic is **not** hand-rolled around encrypted values. `settle()`
 calls `Nox.transfer`, because reimplementing atomic confidential movement on top
 of a protocol that already guarantees it is how you introduce the bug.
 
-The relayer is granted **nothing**. It submits transactions without being
-entitled to read a single outcome.
+The relayer is granted **nothing** — in the design, a relayer distinct from
+the owner submits transactions without being entitled to read a single
+outcome. (The live ring currently uses the owner key as the relayer, so the
+gateway does decrypt outcomes; a separate relayer is one `deploy-ring`
+parameter away — see Limitations.)
 
 ---
 
@@ -458,6 +461,23 @@ relays. Batching mitigates but does not eliminate timing correlation on a
 low-traffic deployment. The gateway holds keys and is trusted. A stealth address
 hides the link, not the amount — the amount is hidden separately, by Nox.
 
+Two deployment facts worth stating as precisely as the rest:
+
+- **In the live ring, the relayer is the owner.** The design — and
+  `deploy-ring.ts` — supports a relayer distinct from the owner, granted
+  nothing and unable to read a single outcome. The ring currently on Sepolia
+  runs both roles with the same key (`0xBfc9521F…`), so the gateway *can*
+  decrypt what it relays. Splitting the key is one parameter in `deploy-ring`;
+  until then, this deployment trusts the gateway with the owner key, exactly
+  as the "gateway holds keys and is trusted" limitation says.
+- **The TEE indexes transactions asynchronously.** A verdict decrypt issued
+  before the iExec TEE has indexed the settlement reads as unreadable, and
+  fail-closed means refuse. Consecutive on-chain actions within seconds of
+  each other can therefore read as "refused" even when authorized; spacing
+  actions ~30 seconds apart keeps every readout green. This is the fail-closed
+  guarantee working as specified — a gateway that retried until a verdict
+  appeared would be a gateway that eventually served anything.
+
 ---
 
 ## Documentation
@@ -514,12 +534,16 @@ Honest about what is proven and what is not.
 | `KairosSettlementRouter` → real Uniswap V3 swap | **Executed live** |
 | Router test suite | 13 passing |
 | `packages/shared` — fail-closed verdict rule | 12 passing |
-| `apps/gateway`, remaining packages, `services/*` | In progress |
-| Dashboard wired to a live gateway | In progress |
+| `packages/{chain,manifest,authz,workflow,sdk}` | Built + tested (52 tests) |
+| `services/{catalog,payments,identity,execution}` | Built + tested; gateway wired (`CATALOG_STORE_FILE` persistence, `/fabric/run/workflow`, `/s/:slug` + `/s/:slug/auto-pay`, flush readiness check) |
+| Dashboard wired to a live gateway | **Live** — every page reads the real gateway (`demoMode:false`, Sepolia) |
 
-The confidential core is complete and verified end to end on Sepolia. What
-remains is the service layer around it — the gateway, the remaining packages,
-and wiring the dashboard to live chain state.
+The confidential core is complete and verified end to end on Sepolia. The
+service layer around it — gateway routes, the remaining packages, the
+services, and the dashboard — is built, tested, merged and **deployed**
+(the VPS gateway runs the current code; the catalogue is seeded via
+`POST /fabric/marketplace/seed` + `/fabric/workflows/seed` after each
+restart, or persists with `CATALOG_STORE_FILE`).
 
 ---
 

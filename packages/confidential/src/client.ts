@@ -53,6 +53,19 @@ export const capPolicyAbi = parseAbi([
   "function isRegistered(address subject) view returns (bool)",
 ]);
 
+/** Eligibility is a plaintext flag — a subject is either allowed or not. */
+export const allowlistPolicyAbi = parseAbi([
+  "function setEligible(address subject, bool eligible)",
+  "function hasEntry(address subject) view returns (bool)",
+]);
+
+/** A cumulative allowance, encrypted like the per-call cap. */
+export const velocityPolicyAbi = parseAbi([
+  "function registerSubject(address subject, bytes32 encryptedAllowance, bytes proof)",
+  "function resetConsumed(address subject)",
+  "function isRegistered(address subject) view returns (bool)",
+]);
+
 export const stealthAnnouncerAbi = parseAbi([
   "function registerKeys(uint256 schemeId, bytes metaAddress)",
   "function announce(uint256 schemeId, address stealthAddress, bytes ephemeralPubKey, bytes metadata)",
@@ -72,6 +85,12 @@ export interface ConfidentialConfig {
   rpcUrl: string;
   vaultAddress: Address;
   capPolicyAddress?: Address;
+  /** Allowlist policy — subjects are either eligible or not (plaintext flag). */
+  allowlistPolicyAddress?: Address;
+  /** Velocity policy — cumulative allowance, encrypted like the cap. */
+  velocityPolicyAddress?: Address;
+  /** Cumulative allowance for newly registered agents; defaults to 3x the cap. */
+  velocityAllowanceWei?: bigint;
   /** ERC-5564 bulletin board. Without it, stealth payments cannot be found. */
   stealthAnnouncerAddress?: Address;
   /** Where a proven epoch aggregate is swapped and paid out. */
@@ -277,7 +296,7 @@ export class ConfidentialClient {
     return this.send("fund", [handle, handleProof]);
   }
 
-  async registerAgent(agent: Address, capWei: bigint): Promise<{ vault: Hex; policy?: Hex }> {
+  async registerAgent(agent: Address, capWei: bigint): Promise<{ vault: Hex; policy?: Hex; allowlist?: Hex; velocity?: Hex }> {
     const vault = await this.send("registerAgent", [agent]);
 
     if (!this.config.capPolicyAddress || !this.walletClient) return { vault };
@@ -288,14 +307,48 @@ export class ConfidentialClient {
       "uint256",
       this.config.capPolicyAddress,
     );
-    const hash = await this.walletClient.writeContract({
+    const policy = await this.walletClient.writeContract({
       address: this.config.capPolicyAddress,
       abi: capPolicyAbi,
       functionName: "registerSubject",
       args: [agent, handle, handleProof],
     });
-    await this.publicClient.waitForTransactionReceipt({ hash });
-    return { vault, policy: hash };
+    await this.publicClient.waitForTransactionReceipt({ hash: policy });
+
+    // The vault's policy chain is composite(cap, velocity, allowlist) — every
+    // policy must approve. The cap alone would leave a freshly registered agent
+    // permanently refused by the other two, so wire those here too.
+    const extra: { allowlist?: Hex; velocity?: Hex } = {};
+
+    if (this.config.allowlistPolicyAddress) {
+      const allowlist = await this.walletClient.writeContract({
+        address: this.config.allowlistPolicyAddress,
+        abi: allowlistPolicyAbi,
+        functionName: "setEligible",
+        args: [agent, true],
+      });
+      await this.publicClient.waitForTransactionReceipt({ hash: allowlist });
+      extra.allowlist = allowlist;
+    }
+
+    if (this.config.velocityPolicyAddress) {
+      const allowance = this.config.velocityAllowanceWei ?? capWei * 3n;
+      const { handle: allowanceHandle, handleProof: allowanceProof } = await client.encryptInput(
+        allowance,
+        "uint256",
+        this.config.velocityPolicyAddress,
+      );
+      const velocity = await this.walletClient.writeContract({
+        address: this.config.velocityPolicyAddress,
+        abi: velocityPolicyAbi,
+        functionName: "registerSubject",
+        args: [agent, allowanceHandle, allowanceProof],
+      });
+      await this.publicClient.waitForTransactionReceipt({ hash: velocity });
+      extra.velocity = velocity;
+    }
+
+    return { vault, policy, ...extra };
   }
 
   /**
