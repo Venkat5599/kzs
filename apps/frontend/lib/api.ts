@@ -20,29 +20,28 @@ const ABSOLUTE = (process.env.NEXT_PUBLIC_GATEWAY_URL ?? FALLBACK).replace(/\/+$
 import { txUrl } from "./config";
 
 /**
- * In the browser, go through the same-origin `/gw` proxy declared in
- * `next.config.ts`; on the server, call the gateway directly.
+ * In the browser, call the gateway directly (cross-origin, preflight-covered);
+ * on the server, call the gateway directly too.
  *
- * The gateway allowlists origins, and Vercel serves this app on several
- * hostnames (the alias, an auto-assigned one, and one per deployment). Calling
- * it cross-origin therefore worked from exactly one hostname and failed with
- * "Failed to fetch" everywhere else. A same-origin request has no such problem.
+ * The gateway allowlists origins (localhost:5173, the Vercel site, the
+ * mirror), so cross-origin browser calls pass preflight. The same-origin
+ * `/gw` rewrite used to stand in front of these calls, but Next.js's proxy
+ * cuts responses at ~30s and settles routinely take longer — money moved,
+ * UI errored. A direct call holds the connection as long as the gateway
+ * needs, and the Vercel hostnames are all covered by the allow-list.
  * Server-side there is no origin and no CORS, so the direct URL is right there.
  */
-const BASE = typeof window === "undefined" ? ABSOLUTE : "/gw";
+const BASE = ABSOLUTE;
 
 /**
  * The absolute gateway URL, for display and for commands a user copies out
  * (curl lines, MCP connection strings, endpoints). It is a build-time constant
  * — identical in the server and client bundles — so rendering it during SSR
  * cannot cause the hydration mismatch that rendering the `/gw` proxy path did.
- *
- * Browser fetches must NOT use this (cross-origin → the CORS failure the proxy
- * exists to avoid); they go through `apiBase` below.
  */
 export const gatewayUrl = ABSOLUTE;
 
-/** Browser-safe base for fetches: the same-origin `/gw` proxy in the browser, the direct URL on the server. */
+/** Browser-safe base for fetches: the direct gateway URL in the browser and on the server. */
 export const apiBase = BASE;
 
 export interface SkillSummary {

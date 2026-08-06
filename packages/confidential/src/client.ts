@@ -393,7 +393,19 @@ export class ConfidentialClient {
 
     const hash = await this.send("settle", [agent, handle, handleProof]);
 
-    const after = (await this.agent(agent)).spentWei;
+    // The TEE indexes each transaction asynchronously, so the spend handle
+    // this tx just created is only decryptable once the indexer has caught
+    // up — which can take tens of seconds of wall-clock time. Reading it
+    // immediately therefore produced unreadable verdicts on healthy
+    // settlements. Poll with a bounded budget (12 × 5s = 60s max); if it
+    // stays unreadable for the whole window we fail closed exactly as
+    // before. The budget bounds the wait; it never converts an unreadable
+    // verdict into an authorization — a refusal is still a refusal.
+    let after: string | null = null;
+    for (let i = 0; i < 12 && after === null; i++) {
+      after = (await this.agent(agent)).spentWei;
+      if (after === null) await new Promise((resolve) => setTimeout(resolve, 5000));
+    }
 
     let verdict: Verdict;
     if (before === null || after === null) {
