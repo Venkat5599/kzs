@@ -101,7 +101,17 @@ export function StealthSection() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ agent: agent.trim(), amountWei: amount.trim(), payTo: payTo.trim() }),
       });
-      const body = (await res.json()) as Settlement & { message?: string };
+      const text = await res.text();
+      let body: Settlement & { message?: string };
+      try {
+        body = JSON.parse(text) as Settlement & { message?: string };
+      } catch {
+        // A non-JSON body means the gateway (or something in front of it)
+        // answered with an error page — most often a restart or a proxy
+        // timeout. Never surface a raw JSON.parse error to the user.
+        setError("The gateway answered with a non-JSON response — it may have restarted or the request timed out. Try again.");
+        return;
+      }
 
       // A 402 is a refusal, not a failure — the budget did its job. Given its
       // own state so it never reads as a broken request.
@@ -143,7 +153,13 @@ export function StealthSection() {
         headers: { "content-type": "application/json" },
         body: "{}",
       });
-      setKeys((await res.json()) as Keys);
+      const text = await res.text();
+      try {
+        setKeys(JSON.parse(text) as Keys);
+      } catch {
+        setKeys(null);
+        setError("The gateway answered with a non-JSON response — it may have restarted. Try again.");
+      }
     } catch {
       setKeys(null);
     } finally {
